@@ -75,13 +75,13 @@ html,body{
   position:absolute;
   top:52px;
   left:10px;
-  width:180px;
+  width:190px;
   background:rgba(0,0,0,.45);
   color:#fff;
   padding:10px 12px;
   border-radius:10px;
   font-size:14px;
-  font-weight:800;
+  font-weight:900;
   z-index:10;
   border:1px solid rgba(255,255,255,.15);
   line-height:1.25;
@@ -289,7 +289,8 @@ html,body{
     <canvas id="ballCanvas"></canvas>
     <div id="windInfo"></div>
 
-    <div id="holeInfo">rest---y<br>first</div>
+    <!-- 2行表示：上に 1H Par4 / 下に Rest + 打数 -->
+    <div id="holeInfo">1H Par4<br>Rest--- First</div>
 
     <div id="aimControls">
       <button id="aimLeft" aria-label="aim left">◀</button>
@@ -369,18 +370,27 @@ function updateWindUI(){
 }
 updateWindUI();
 
-/* ---- 位置設定 ---- */
+/* ---- 位置設定 ----
+   ★矢印が真上になる原因：ティーとグリーンのXが同じだったため。
+   → グリーン中心を少し右へ（0.70）に寄せ、常にグリーン方向を向くようにしています。
+   もし実際の濃い緑の位置とズレる場合、GREEN_X_RATIO / GREEN_Y_RATIO を微調整してください。
+*/
+const TEE_X_RATIO   = 0.62;
+const TEE_Y_RATIO   = 0.88;
+const GREEN_X_RATIO = 0.70;  // ←ここがポイント（右寄りに）
+const GREEN_Y_RATIO = 0.14;  // 上部の濃い緑を想定（必要なら調整）
+
 function getTeePos(){
-  return { x: canvas.width*0.62, y: canvas.height*0.88 };
+  return { x: canvas.width*TEE_X_RATIO, y: canvas.height*TEE_Y_RATIO };
 }
 function getGreenCenter(){
-  return { x: canvas.width*0.62, y: canvas.height*0.12 };
+  return { x: canvas.width*GREEN_X_RATIO, y: canvas.height*GREEN_Y_RATIO };
 }
 function getGreenRadius(){
   return Math.min(canvas.width, canvas.height) * 0.07;
 }
 
-/* ---- 距離表示（restXXXy） ---- */
+/* ---- 距離表示（RestXXX） ---- */
 const HOLE_YARDS = 360; // Par4想定
 function remainingYards(){
   const g = getGreenCenter();
@@ -393,19 +403,21 @@ function remainingYards(){
   return yards;
 }
 
-/* ---- 打数表示（英語） ---- */
+/* ---- 打数表示（英語、先頭大文字） ---- */
 const ORDINALS = [
   "first","second","third","fourth","fifth",
   "sixth","seventh","eighth","ninth","tenth",
   "eleventh","twelfth","thirteenth","fourteenth","fifteenth"
 ];
+function cap1(s){ return s ? (s[0].toUpperCase()+s.slice(1)) : s; }
 function nextStrokeWord(){
   const n = stroke + 1; // 次に打つ番
-  return ORDINALS[n-1] || (n + "th");
+  return cap1(ORDINALS[n-1] || (n + "th"));
 }
 function updateHoleInfo(){
   const y = remainingYards();
-  document.getElementById("holeInfo").innerHTML = `rest${y}y<br>${nextStrokeWord()}`;
+  document.getElementById("holeInfo").innerHTML =
+    `1H Par4<br>Rest${y} ${nextStrokeWord()}`;
 }
 
 /* ===== エイム（矢印） ===== */
@@ -448,7 +460,7 @@ let cursorY = 0;
 let cursorX = 0;
 let direction = 1;
 
-/* ★変更：ショットは「飛行フレーム数」だけ動いて着地即停止 */
+/* ショットは「飛行フレーム数」だけ動いて着地即停止 */
 let flightFrame = 0;
 let flightFramesTotal = 0;
 
@@ -550,11 +562,10 @@ function draw(){
 /* ===== ボール移動：着地したら即停止 ===== */
 function animate(){
   if(isBallMoving){
-    // 位置更新（減速なし：飛行中の移動だけ）
     ball.x += velocity.x;
     ball.y += velocity.y;
 
-    // 風のドリフト（飛行中だけ少し流す）
+    // 風のドリフト（飛行中だけ）
     const wx = Math.cos(windDir*Math.PI/180) * windSpeed * 0.18;
     const wy = Math.sin(windDir*Math.PI/180) * windSpeed * 0.18;
     ball.x += wx;
@@ -562,7 +573,6 @@ function animate(){
 
     flightFrame++;
 
-    // ★着地：ここで完全停止
     if(flightFrame >= flightFramesTotal){
       isBallMoving = false;
       velocity.x = 0;
@@ -660,15 +670,11 @@ function swingAndShot(){
 
   stroke += 1;
 
-  // 方向は矢印方向
   const aimAngle = getAimAngleRad();
   const nx = Math.cos(aimAngle);
   const ny = Math.sin(aimAngle);
 
-  // パワー（縦カーソルで微調整）
   const forwardScale = 1 + (-cursorY * 0.004);
-
-  // 横カーソルは“ブレ”として少しだけ（不要なら 0 に）
   const sideScale    = (cursorX * 0.004);
 
   const speed = clubPower * 0.03;
@@ -679,10 +685,9 @@ function swingAndShot(){
   velocity.x = nx * speed * forwardScale + px * speed * sideScale;
   velocity.y = ny * speed * forwardScale + py * speed * sideScale;
 
-  // ★飛行フレーム数を決める（長いクラブほど少し長く飛ぶ）
-  // 調整ポイント：下の係数を変えると「着地点の距離感」が変わります
+  // ★飛距離を少し長く（前よりフレーム数を増やす）
   flightFrame = 0;
-  flightFramesTotal = Math.round(18 + speed * 1.9); // 例）1Wで ~30〜35フレーム
+  flightFramesTotal = Math.round(26 + speed * 2.6); // ←ここで「長さ」調整
 
   isBallMoving = true;
 
