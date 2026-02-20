@@ -6,11 +6,20 @@
 <title>Real Golf! DEMO</title>
 
 <style>
-html, body { height:100%; margin:0; overflow:hidden; font-family:sans-serif; }
+html, body {
+  height:100%;
+  margin:0;
+  overflow:hidden;
+  font-family:sans-serif;
+}
 
+/* ---------- 共通 ---------- */
 .screen{
-  position:fixed; inset:0;
-  display:flex; justify-content:center; align-items:center;
+  position:fixed;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
   flex-direction:column;
 }
 
@@ -40,6 +49,7 @@ button{
   height:100vh;
 }
 
+/* ---------- LEFT（コース） ---------- */
 #left{
   width:50%;
   position:relative;
@@ -96,6 +106,7 @@ button{
   flex-direction:column;
 }
 
+/* ---------- インパクトゾーン ---------- */
 #impactZone{
   flex:1;
   background:#111;
@@ -106,8 +117,8 @@ button{
 }
 
 #ballUI{
-  width:300px;
-  height:300px;
+  width:min(70vw,260px);
+  height:min(70vw,260px);
   position:relative;
 }
 
@@ -118,17 +129,10 @@ button{
   background:radial-gradient(circle at 30% 30%, white, #ddd);
 }
 
-.cursor{
-  position:absolute;
-  width:22px;
-  height:22px;
-  border:3px solid yellow;
-  border-radius:6px;
-}
-
+/* ---------- プレイヤー ---------- */
 #playerZone{
   flex:1;
-  background:url("https://images.unsplash.com/photo-1520166012956-add9ba0835cb?q=80&w=1400") center/cover;
+  background:#0e5c2f; /* ギター背景削除 */
   position:relative;
   display:flex;
   justify-content:center;
@@ -137,8 +141,7 @@ button{
 }
 
 #golferImg{
-  width:90%;
-  height:90%;
+  height:85%;
   object-fit:contain;
   filter:drop-shadow(0 12px 18px rgba(0,0,0,.45));
 }
@@ -151,6 +154,17 @@ button{
   0%{ transform:rotate(-10deg); }
   50%{ transform:rotate(18deg); }
   100%{ transform:rotate(8deg); }
+}
+
+/* ---------- スマホ最適化 ---------- */
+@media (max-width:768px){
+  #layout{
+    flex-direction:column;
+  }
+  #left,#right{
+    width:100%;
+    height:50%;
+  }
 }
 </style>
 </head>
@@ -165,6 +179,7 @@ button{
 <div id="gameScreen">
   <div id="layout">
 
+    <!-- 左：コース -->
     <div id="left">
       <canvas id="ballCanvas"></canvas>
       <div id="windInfo"></div>
@@ -180,6 +195,7 @@ button{
       </div>
     </div>
 
+    <!-- 右：UI -->
     <div id="right">
       <div id="impactZone">
         <div id="ballUI">
@@ -244,7 +260,6 @@ function drawCourse(){
 
   const angle = Math.atan2(green.y-tee.y, green.x-tee.x);
 
-  // フェアウェイ
   ctx.fillStyle="rgba(0,0,0,.15)";
   ctx.beginPath();
   ctx.ellipse((tee.x+green.x)/2,(tee.y+green.y)/2,
@@ -252,27 +267,23 @@ function drawCourse(){
     angle,0,Math.PI*2);
   ctx.fill();
 
-  // グリーン
   ctx.fillStyle="rgba(120,255,120,.4)";
   ctx.beginPath();
   ctx.arc(green.x,green.y,40,0,Math.PI*2);
   ctx.fill();
 
-  // ピン
   ctx.strokeStyle="white";
   ctx.beginPath();
   ctx.moveTo(green.x,green.y-40);
   ctx.lineTo(green.x,green.y+10);
   ctx.stroke();
 
-  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(tee.x,tee.y,6,0,Math.PI*2);
   ctx.fill();
 }
 
-// クラブ切替
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.addEventListener("click",()=>{
     document.querySelectorAll(".club-buttons button")
