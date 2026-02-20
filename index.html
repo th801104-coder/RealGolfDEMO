@@ -70,12 +70,12 @@ html,body{
   z-index:10;
 }
 
-/* ★追加：ホール情報（四角い箱） */
+/* ホール情報（箱） */
 #holeInfo{
   position:absolute;
-  top:52px;         /* windInfoの下に配置 */
+  top:52px;
   left:10px;
-  width:160px;
+  width:180px;
   background:rgba(0,0,0,.45);
   color:#fff;
   padding:10px 12px;
@@ -84,6 +84,36 @@ html,body{
   font-weight:800;
   z-index:10;
   border:1px solid rgba(255,255,255,.15);
+  line-height:1.25;
+}
+
+/* ★追加：エイム（矢印）操作 */
+#aimControls{
+  position:absolute;
+  top:122px; /* holeInfoの下 */
+  left:10px;
+  z-index:10;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.12);
+  color:#fff;
+  padding:8px 10px;
+  border-radius:10px;
+  backdrop-filter: blur(2px);
+}
+#aimControls button{
+  padding:8px 10px;
+  border:none;
+  border-radius:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+#aimLabel{
+  font-weight:900;
+  font-size:13px;
+  opacity:.95;
 }
 
 /* NiceON表示 */
@@ -259,8 +289,15 @@ html,body{
     <canvas id="ballCanvas"></canvas>
     <div id="windInfo"></div>
 
-    <!-- ★追加：ホール情報 -->
-    <div id="holeInfo">1H Par4:---</div>
+    <!-- 表示変更：残り距離 + 打数（英語） -->
+    <div id="holeInfo">rest---y<br>first</div>
+
+    <!-- ★追加：エイム操作 -->
+    <div id="aimControls">
+      <button id="aimLeft" aria-label="aim left">◀</button>
+      <div id="aimLabel">Aim: 0</div>
+      <button id="aimRight" aria-label="aim right">▶</button>
+    </div>
 
     <div id="banner"><span>NiceON</span></div>
 
@@ -345,16 +382,12 @@ function getGreenRadius(){
   return Math.min(canvas.width, canvas.height) * 0.07;
 }
 
-/* ---- 距離表示（XXX） ----
-   ここでは「残り距離」を yd 表示にします。
-   コース画像は縮尺がないので、画面上の距離を “ホール想定長(360yd)” に当てはめます。
-*/
+/* ---- 距離表示（restXXXy） ---- */
 const HOLE_YARDS = 360; // Par4想定
 function remainingYards(){
   const g = getGreenCenter();
   const d = Math.hypot(ball.x - g.x, ball.y - g.y);
 
-  // 画面上の「ティー→グリーン」の距離をホール長にマッピング
   const tee = getTeePos();
   const base = Math.hypot(tee.x - g.x, tee.y - g.y) || 1;
 
@@ -362,10 +395,53 @@ function remainingYards(){
   return yards;
 }
 
+/* ---- 打数表示（英語） ---- */
+const ORDINALS = [
+  "first","second","third","fourth","fifth",
+  "sixth","seventh","eighth","ninth","tenth",
+  "eleventh","twelfth","thirteenth","fourteenth","fifteenth"
+];
+function nextStrokeWord(){
+  const n = stroke + 1; // 次に打つ番
+  return ORDINALS[n-1] || (n + "th");
+}
+
 function updateHoleInfo(){
   const y = remainingYards();
-  document.getElementById("holeInfo").innerText = `1H Par4:${y}yd`;
+  document.getElementById("holeInfo").innerHTML = `rest${y}y<br>${nextStrokeWord()}`;
 }
+
+/* ===== エイム（矢印） =====
+   aimLevel: -2,-1,0,1,2 の5段階
+   角度ステップは 7°（調整しやすいように少し大きめ）
+*/
+let aimLevel = 0;
+const AIM_MIN = -2;
+const AIM_MAX =  2;
+const AIM_STEP_DEG = 7;
+
+function updateAimUI(){
+  document.getElementById("aimLabel").textContent = `Aim: ${aimLevel}`;
+}
+updateAimUI();
+
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+/* iPhoneでも確実に反応するよう pointerdown を採用 */
+document.getElementById("aimLeft").addEventListener("pointerdown", (e)=>{
+  e.preventDefault();
+  if(isBallMoving) return;
+  aimLevel = clamp(aimLevel - 1, AIM_MIN, AIM_MAX);
+  updateAimUI();
+  draw();
+});
+document.getElementById("aimRight").addEventListener("pointerdown", (e)=>{
+  e.preventDefault();
+  if(isBallMoving) return;
+  aimLevel = clamp(aimLevel + 1, AIM_MIN, AIM_MAX);
+  updateAimUI();
+  draw();
+});
 
 /* ---- 状態 ---- */
 let stroke = 0;
@@ -392,6 +468,8 @@ function resetHole(){
   phase = "idle";
   isBallMoving = false;
   velocity.x = velocity.y = 0;
+  aimLevel = 0;
+  updateAimUI();
 
   const tee = getTeePos();
   ball.x = tee.x;
@@ -402,14 +480,75 @@ function resetHole(){
   draw();
 }
 
+/* ===== 矢印描画 ===== */
+function drawArrow(fromX, fromY, angleRad, length){
+  const toX = fromX + Math.cos(angleRad) * length;
+  const toY = fromY + Math.sin(angleRad) * length;
+
+  // 太線（黒） + 外枠っぽく白影
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  // 影/縁取り
+  ctx.strokeStyle = "rgba(255,255,255,.65)";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+
+  // 本体
+  ctx.strokeStyle = "rgba(0,0,0,.75)";
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+
+  // 矢尻
+  const headLen = 14;
+  const a1 = angleRad + Math.PI * 0.85;
+  const a2 = angleRad - Math.PI * 0.85;
+
+  ctx.fillStyle = "rgba(0,0,0,.75)";
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX + Math.cos(a1)*headLen, toY + Math.sin(a1)*headLen);
+  ctx.lineTo(toX + Math.cos(a2)*headLen, toY + Math.sin(a2)*headLen);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function getAimAngleRad(){
+  const g = getGreenCenter();
+  const dx = g.x - ball.x;
+  const dy = g.y - ball.y;
+  const baseAngle = Math.atan2(dy, dx);
+  const offset = (aimLevel * AIM_STEP_DEG) * Math.PI / 180;
+  return baseAngle + offset;
+}
+
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // エイム矢印（クラブ選択前でも常に表示：要望どおり）
+  // ただしボール移動中は矢印を薄くして邪魔にならないように
+  const aimAngle = getAimAngleRad();
+  ctx.save();
+  if(isBallMoving) ctx.globalAlpha = 0.35;
+  drawArrow(ball.x, ball.y, aimAngle, Math.min(canvas.width, canvas.height) * 0.18);
+  ctx.restore();
+
+  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
   ctx.fill();
 
+  // Stroke表示（従来のデバッグ表示は残す）
   ctx.fillStyle="rgba(0,0,0,.55)";
   ctx.font="12px sans-serif";
   ctx.fillText(`Stroke: ${stroke}`, 10, canvas.height-10);
@@ -418,6 +557,7 @@ function draw(){
 /* ===== ボール移動：停止→距離更新→ON判定 ===== */
 function animate(){
   if(isBallMoving){
+    // 風（現状はx方向のみ。必要なら後でx/y両方にできます）
     velocity.x += Math.cos(windDir*Math.PI/180) * windSpeed * 0.008;
 
     ball.x += velocity.x;
@@ -523,17 +663,21 @@ function swingAndShot(){
 
   stroke += 1;
 
-  const g = getGreenCenter();
-  const dx = g.x - ball.x;
-  const dy = g.y - ball.y;
-  const len = Math.hypot(dx,dy) || 1;
-  const nx = dx / len;
-  const ny = dy / len;
+  // ★方向は「矢印方向」を採用
+  const aimAngle = getAimAngleRad();
+  const nx = Math.cos(aimAngle);
+  const ny = Math.sin(aimAngle);
 
+  // パワー（縦カーソルで微調整）
   const forwardScale = 1 + (-cursorY * 0.004);
-  const sideScale    = (cursorX * 0.010);
+
+  // ※横カーソルは“ブレ”として少しだけ残す（不要なら0にできます）
+  //   「矢印方向に飛ぶ」を守るため、影響は小さめに
+  const sideScale    = (cursorX * 0.004);
 
   const speed = clubPower * 0.03;
+
+  // 矢印方向(nx,ny)に対して直角方向(px,py)
   const px = -ny;
   const py = nx;
 
