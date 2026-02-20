@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Real Golf!</title>
+<title>Real Golf</title>
 
 <style>
 html,body{
@@ -13,18 +13,15 @@ html,body{
   font-family:sans-serif;
 }
 
-/* ====== 常に横2分割 ====== */
 #layout{
   display:flex;
   width:100vw;
   height:100vh;
-  flex-direction:row; /* ←固定 */
 }
 
-/* ====== 左：コース ====== */
+/* 左 */
 #left{
   width:50vw;
-  height:100vh;
   background:#1f8f3a;
   position:relative;
 }
@@ -38,7 +35,7 @@ html,body{
   position:absolute;
   top:10px;
   left:10px;
-  background:rgba(0,0,0,.4);
+  background:rgba(0,0,0,.5);
   color:white;
   padding:6px 10px;
   border-radius:8px;
@@ -58,22 +55,20 @@ html,body{
   border:none;
   border-radius:8px;
   font-weight:bold;
-  font-size:14px;
 }
 
 .club-buttons button.active{
   outline:3px solid gold;
 }
 
-/* ====== 右 ====== */
+/* 右 */
 #right{
   width:50vw;
-  height:100vh;
   display:flex;
   flex-direction:column;
 }
 
-/* ====== ボールUI ====== */
+/* ボール */
 #impactZone{
   flex:1;
   background:#111;
@@ -84,8 +79,8 @@ html,body{
 }
 
 #ballUI{
-  width:200px;
-  height:200px;
+  width:220px;
+  height:220px;
   position:relative;
 }
 
@@ -96,18 +91,38 @@ html,body{
   background:radial-gradient(circle at 30% 30%, white, #ddd);
 }
 
+/* ＋カーソル */
 #impactCursor{
   position:absolute;
-  width:18px;
-  height:18px;
-  border:3px solid yellow;
-  border-radius:4px;
+  width:40px;
+  height:40px;
   left:50%;
   top:50%;
   transform:translate(-50%,-50%);
 }
 
-/* ====== プレイヤー ====== */
+#impactCursor::before,
+#impactCursor::after{
+  content:"";
+  position:absolute;
+  background:black;
+}
+
+#impactCursor::before{
+  width:6px;
+  height:100%;
+  left:50%;
+  transform:translateX(-50%);
+}
+
+#impactCursor::after{
+  height:6px;
+  width:100%;
+  top:50%;
+  transform:translateY(-50%);
+}
+
+/* プレイヤー */
 #playerZone{
   flex:1;
   background:linear-gradient(#2b8f44,#1f8f3a);
@@ -118,13 +133,13 @@ html,body{
 }
 
 #golferImg{
-  height:90%;
+  height:80%;
   object-fit:contain;
   transition:transform .3s;
 }
 
 .swing{
-  transform:rotate(20deg);
+  transform:rotate(25deg);
 }
 </style>
 </head>
@@ -132,7 +147,6 @@ html,body{
 
 <div id="layout">
 
-<!-- 左 -->
 <div id="left">
   <canvas id="ballCanvas"></canvas>
   <div id="windInfo"></div>
@@ -147,7 +161,6 @@ html,body{
   </div>
 </div>
 
-<!-- 右 -->
 <div id="right">
   <div id="impactZone">
     <div id="ballUI">
@@ -155,6 +168,7 @@ html,body{
       <div id="impactCursor"></div>
     </div>
   </div>
+
   <div id="playerZone">
     <img id="golferImg" src="assets/golfer.png">
   </div>
@@ -166,60 +180,55 @@ html,body{
 const canvas = document.getElementById("ballCanvas");
 const ctx = canvas.getContext("2d");
 
-let clubPower = 160;
-let windSpeed = 0;
-let windDir = 0;
-let ball = {x:100,y:400};
-let velocity = {x:0,y:0};
-let impact = {x:0,y:0};
+let clubPower=160;
+let windSpeed=Math.random()*2;
+let windDir=Math.random()*360;
 
-function resizeCanvas(){
-  canvas.width = canvas.parentElement.clientWidth;
-  canvas.height = canvas.parentElement.clientHeight;
-  ball.y = canvas.height - 60;
+let ball={x:100,y:400};
+let velocity={x:0,y:0};
+
+let phase="vertical";
+let cursorY=0;
+let cursorX=0;
+let direction=1;
+
+function resize(){
+  canvas.width=canvas.parentElement.clientWidth;
+  canvas.height=canvas.parentElement.clientHeight;
+  ball.y=canvas.height-60;
 }
-window.addEventListener("resize",resizeCanvas);
-resizeCanvas();
+window.addEventListener("resize",resize);
+resize();
 
-function generateWind(){
-  windSpeed = Math.random()*3;
-  windDir = Math.random()*360;
-  document.getElementById("windInfo").innerText =
-    `風向:${Math.floor(windDir)}° 風速:${windSpeed.toFixed(1)}m`;
-}
-generateWind();
+document.getElementById("windInfo").innerText=
+  `風向:${Math.floor(windDir)}° 風速:${windSpeed.toFixed(1)}m`;
 
-function drawCourse(){
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // グリーン
   ctx.fillStyle="rgba(0,0,0,.2)";
   ctx.beginPath();
   ctx.ellipse(canvas.width-120,120,120,60,0,0,Math.PI*2);
   ctx.fill();
 
-  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x,ball.y,6,0,Math.PI*2);
   ctx.fill();
 }
 
-function animate(){
-  ball.x += velocity.x;
-  ball.y += velocity.y;
+function animateBall(){
+  ball.x+=velocity.x;
+  ball.y+=velocity.y;
 
-  // 風
-  velocity.x += Math.cos(windDir*Math.PI/180)*windSpeed*0.02;
+  velocity.x+=Math.cos(windDir*Math.PI/180)*windSpeed*0.02;
+  velocity.x*=0.99;
+  velocity.y*=0.99;
 
-  // 摩擦
-  velocity.x *= 0.99;
-  velocity.y *= 0.99;
-
-  drawCourse();
-  requestAnimationFrame(animate);
+  draw();
+  requestAnimationFrame(animateBall);
 }
-animate();
+animateBall();
 
 /* クラブ */
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
@@ -227,42 +236,58 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
     document.querySelectorAll(".club-buttons button")
       .forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    clubPower = Number(btn.dataset.power);
-  };
+    clubPower=Number(btn.dataset.power);
+  }
 });
 
-/* インパクト処理（上下左右反映） */
-document.getElementById("impactZone").addEventListener("click",(e)=>{
-  const rect = e.currentTarget.getBoundingClientRect();
-  const centerX = rect.left + rect.width/2;
-  const centerY = rect.top + rect.height/2;
+/* カーソル自動移動 */
+function moveCursor(){
+  const cursor=document.getElementById("impactCursor");
 
-  impact.x = (e.clientX - centerX) / 80; // 左右
-  impact.y = (e.clientY - centerY) / 80; // 上下
+  if(phase==="vertical"){
+    cursorY+=direction*2;
+    if(cursorY>50||cursorY<-50) direction*=-1;
+    cursor.style.top=50+cursorY+"%";
+  }
 
-  document.getElementById("impactCursor").style.left =
-    50 + impact.x*20 + "%";
-  document.getElementById("impactCursor").style.top =
-    50 + impact.y*20 + "%";
+  if(phase==="horizontal"){
+    cursorX+=direction*2;
+    if(cursorX>50||cursorX<-50) direction*=-1;
+    cursor.style.left=50+cursorX+"%";
+  }
 
-  swing();
+  requestAnimationFrame(moveCursor);
+}
+moveCursor();
+
+/* タップ処理 */
+document.getElementById("impactZone").addEventListener("click",()=>{
+  if(phase==="vertical"){
+    phase="horizontal";
+    direction=1;
+  }else if(phase==="horizontal"){
+    phase="done";
+    swing();
+  }
 });
 
 function swing(){
-  const golfer = document.getElementById("golferImg");
+  const golfer=document.getElementById("golferImg");
   golfer.classList.add("swing");
   setTimeout(()=>golfer.classList.remove("swing"),300);
 
-  // 上下でトップ・ダフリ
-  let heightAdjust = -impact.y * 4;
+  let topAdjust=-cursorY*0.2;
+  let sideAdjust=cursorX*0.3;
 
-  // 左右でフック・スライス
-  let sideAdjust = impact.x * 5;
+  velocity.x=clubPower*0.05+sideAdjust;
+  velocity.y=topAdjust;
 
-  velocity.x = clubPower*0.05 + sideAdjust;
-  velocity.y = heightAdjust;
+  setTimeout(()=>{
+    phase="vertical";
+    cursorX=0;
+    cursorY=0;
+  },800);
 }
 </script>
-
 </body>
 </html>
