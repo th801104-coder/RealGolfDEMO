@@ -75,7 +75,7 @@ html,body{
   position:absolute;
   top:52px;
   left:10px;
-  width:190px;
+  width:200px;
   background:rgba(0,0,0,.45);
   color:#fff;
   padding:10px 12px;
@@ -289,8 +289,7 @@ html,body{
     <canvas id="ballCanvas"></canvas>
     <div id="windInfo"></div>
 
-    <!-- 2行表示：上に 1H Par4 / 下に Rest + 打数 -->
-    <div id="holeInfo">1H Par4<br>Rest--- First</div>
+    <div id="holeInfo">1H Par4<br>Rest360 First</div>
 
     <div id="aimControls">
       <button id="aimLeft" aria-label="aim left">◀</button>
@@ -370,15 +369,20 @@ function updateWindUI(){
 }
 updateWindUI();
 
-/* ---- 位置設定 ----
-   ★矢印が真上になる原因：ティーとグリーンのXが同じだったため。
-   → グリーン中心を少し右へ（0.70）に寄せ、常にグリーン方向を向くようにしています。
-   もし実際の濃い緑の位置とズレる場合、GREEN_X_RATIO / GREEN_Y_RATIO を微調整してください。
-*/
-const TEE_X_RATIO   = 0.62;
-const TEE_Y_RATIO   = 0.88;
-const GREEN_X_RATIO = 0.70;  // ←ここがポイント（右寄りに）
-const GREEN_Y_RATIO = 0.14;  // 上部の濃い緑を想定（必要なら調整）
+/* =========================================================
+   ★ティー＆グリーンの位置（添付画像ベースで“だいたい”）
+   - 赤丸の中心 → ティー
+   - 黄丸の中心 → グリーン
+   - 黄丸の大きさ → グリーン半径
+   ここを微調整すれば、ピッタリ合います。
+========================================================= */
+const TEE_X_RATIO   = 0.38;  // 赤丸中心（だいたい）
+const TEE_Y_RATIO   = 0.82;  // 赤丸中心（だいたい）
+
+const GREEN_X_RATIO = 0.33;  // 黄丸中心（だいたい）
+const GREEN_Y_RATIO = 0.12;  // 黄丸中心（だいたい）
+
+const GREEN_RADIUS_RATIO = 0.10; // 黄丸の大きさ（だいたい）※短辺基準
 
 function getTeePos(){
   return { x: canvas.width*TEE_X_RATIO, y: canvas.height*TEE_Y_RATIO };
@@ -387,7 +391,7 @@ function getGreenCenter(){
   return { x: canvas.width*GREEN_X_RATIO, y: canvas.height*GREEN_Y_RATIO };
 }
 function getGreenRadius(){
-  return Math.min(canvas.width, canvas.height) * 0.07;
+  return Math.min(canvas.width, canvas.height) * GREEN_RADIUS_RATIO;
 }
 
 /* ---- 距離表示（RestXXX） ---- */
@@ -420,7 +424,9 @@ function updateHoleInfo(){
     `1H Par4<br>Rest${y} ${nextStrokeWord()}`;
 }
 
-/* ===== エイム（矢印） ===== */
+/* ===== エイム（矢印） =====
+   aimLevel: -2,-1,0,1,2 の5段階
+*/
 let aimLevel = 0;
 const AIM_MIN = -2;
 const AIM_MAX =  2;
@@ -464,6 +470,7 @@ let direction = 1;
 let flightFrame = 0;
 let flightFramesTotal = 0;
 
+/* ===== canvasサイズ ===== */
 function resize(){
   canvas.width = canvas.parentElement.clientWidth;
   canvas.height = canvas.parentElement.clientHeight;
@@ -471,6 +478,7 @@ function resize(){
 window.addEventListener("resize", ()=>{ resize(); draw(); });
 resize();
 
+/* ===== リセット ===== */
 function resetHole(){
   stroke = 0;
   clubPower = 0;
@@ -502,6 +510,7 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
+  // 縁取り
   ctx.strokeStyle = "rgba(255,255,255,.65)";
   ctx.lineWidth = 8;
   ctx.beginPath();
@@ -509,6 +518,7 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
+  // 本体
   ctx.strokeStyle = "rgba(0,0,0,.75)";
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -516,6 +526,7 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
+  // 矢尻
   const headLen = 14;
   const a1 = angleRad + Math.PI * 0.85;
   const a2 = angleRad - Math.PI * 0.85;
@@ -531,6 +542,7 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.restore();
 }
 
+/* ★矢印は常に「グリーン中心」を向く（＋左右微調整） */
 function getAimAngleRad(){
   const g = getGreenCenter();
   const dx = g.x - ball.x;
@@ -543,17 +555,20 @@ function getAimAngleRad(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
+  // エイム矢印（常にグリーン方向）
   const aimAngle = getAimAngleRad();
   ctx.save();
   if(isBallMoving) ctx.globalAlpha = 0.35;
   drawArrow(ball.x, ball.y, aimAngle, Math.min(canvas.width, canvas.height) * 0.18);
   ctx.restore();
 
+  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
   ctx.fill();
 
+  // デバッグ
   ctx.fillStyle="rgba(0,0,0,.55)";
   ctx.font="12px sans-serif";
   ctx.fillText(`Stroke: ${stroke}`, 10, canvas.height-10);
@@ -562,6 +577,7 @@ function draw(){
 /* ===== ボール移動：着地したら即停止 ===== */
 function animate(){
   if(isBallMoving){
+    // 飛行中の移動
     ball.x += velocity.x;
     ball.y += velocity.y;
 
@@ -573,6 +589,7 @@ function animate(){
 
     flightFrame++;
 
+    // 着地：完全停止
     if(flightFrame >= flightFramesTotal){
       isBallMoving = false;
       velocity.x = 0;
@@ -590,6 +607,7 @@ function animate(){
 }
 animate();
 
+/* ★黄丸に入ったらNiceOn */
 function isOnGreen(){
   const g = getGreenCenter();
   const r = getGreenRadius();
@@ -670,11 +688,15 @@ function swingAndShot(){
 
   stroke += 1;
 
+  // 方向は矢印方向（＝グリーン方向＋左右微調整）
   const aimAngle = getAimAngleRad();
   const nx = Math.cos(aimAngle);
   const ny = Math.sin(aimAngle);
 
+  // 縦カーソルで強弱
   const forwardScale = 1 + (-cursorY * 0.004);
+
+  // 横カーソルは“ブレ”として少し（不要なら 0 に）
   const sideScale    = (cursorX * 0.004);
 
   const speed = clubPower * 0.03;
@@ -685,9 +707,9 @@ function swingAndShot(){
   velocity.x = nx * speed * forwardScale + px * speed * sideScale;
   velocity.y = ny * speed * forwardScale + py * speed * sideScale;
 
-  // ★飛距離を少し長く（前よりフレーム数を増やす）
+  // ★飛距離：少し長め（短い場合はここを上げる）
   flightFrame = 0;
-  flightFramesTotal = Math.round(26 + speed * 2.6); // ←ここで「長さ」調整
+  flightFramesTotal = Math.round(30 + speed * 3.2);
 
   isBallMoving = true;
 
