@@ -14,7 +14,33 @@ html,body{
   padding-bottom: env(safe-area-inset-bottom);
 }
 
-/* ===== レイアウト（横2分割固定） ===== */
+/* ===== オープニング ===== */
+#startScreen{
+  position:fixed;
+  inset:0;
+  background:url("https://images.unsplash.com/photo-1592919505780-303950717480?q=80&w=1600") center/cover;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  color:white;
+  z-index:100;
+}
+
+#startScreen h1{
+  font-size:48px;
+  text-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+
+#startBtn{
+  padding:12px 24px;
+  border:none;
+  border-radius:10px;
+  font-size:18px;
+  cursor:pointer;
+}
+
+/* ===== ゲーム画面 ===== */
 #layout{
   display:flex;
   width:100vw;
@@ -45,10 +71,9 @@ html,body{
   z-index:10;
 }
 
-/* クラブ */
 .club-buttons{
   position:absolute;
-  bottom:70px; /* ← はみ出し防止 */
+  bottom:70px;
   left:10px;
   display:flex;
   gap:6px;
@@ -91,14 +116,27 @@ html,body{
   position:relative;
 }
 
+/* ゴルフボール */
 #ballCircle{
   width:100%;
   height:100%;
   border-radius:50%;
-  background:radial-gradient(circle at 30% 30%, white, #ddd);
+  background:
+    radial-gradient(circle at 30% 30%, white, #ddd);
+  position:relative;
+  overflow:hidden;
 }
 
-/* 黒太＋カーソル */
+/* ディンプル */
+.dimple{
+  position:absolute;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:rgba(0,0,0,.08);
+}
+
+/* ＋カーソル */
 #impactCursor{
   position:absolute;
   width:40px;
@@ -106,6 +144,7 @@ html,body{
   left:50%;
   top:50%;
   transform:translate(-50%,-50%);
+  display:none; /* ← 初期は非表示 */
 }
 
 #impactCursor::before,
@@ -152,9 +191,15 @@ html,body{
 </head>
 <body>
 
-<div id="layout">
+<!-- オープニング -->
+<div id="startScreen">
+  <h1>REAL GOLF!</h1>
+  <button id="startBtn">START</button>
+</div>
 
-<!-- 左：コース -->
+<div id="layout" style="display:none;">
+
+<!-- 左 -->
 <div id="left">
   <canvas id="ballCanvas"></canvas>
   <div id="windInfo"></div>
@@ -162,7 +207,7 @@ html,body{
   <div class="club-buttons">
     <button data-power="220">1W</button>
     <button data-power="190">3W</button>
-    <button data-power="160" class="active">5I</button>
+    <button data-power="160">5I</button>
     <button data-power="140">7I</button>
     <button data-power="110">9I</button>
     <button data-power="60">SW</button>
@@ -186,25 +231,41 @@ html,body{
 </div>
 
 <script>
-/* ===== スマホvh補正（重要） ===== */
+/* ===== vh補正 ===== */
 function setRealHeight(){
   document.body.style.height = window.innerHeight + "px";
 }
 window.addEventListener("resize", setRealHeight);
 setRealHeight();
 
-/* ===== ゲーム処理 ===== */
+/* ===== スタート処理 ===== */
+document.getElementById("startBtn").onclick = ()=>{
+  document.getElementById("startScreen").style.display="none";
+  document.getElementById("layout").style.display="flex";
+};
+
+/* ===== ディンプル生成 ===== */
+const ballCircle = document.getElementById("ballCircle");
+for(let i=0;i<80;i++){
+  const d=document.createElement("div");
+  d.className="dimple";
+  d.style.left=Math.random()*100+"%";
+  d.style.top=Math.random()*100+"%";
+  ballCircle.appendChild(d);
+}
+
+/* ===== ゲーム ===== */
 const canvas = document.getElementById("ballCanvas");
 const ctx = canvas.getContext("2d");
 
-let clubPower=160;
+let clubPower=0;
 let windSpeed=Math.random()*2;
 let windDir=Math.random()*360;
 
 let ball={x:100,y:400};
 let velocity={x:0,y:0};
 
-let phase="vertical";
+let phase="idle";
 let cursorY=0;
 let cursorX=0;
 let direction=1;
@@ -247,17 +308,20 @@ function animateBall(){
 }
 animateBall();
 
-/* クラブ */
+/* ===== クラブ選択 ===== */
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
     document.querySelectorAll(".club-buttons button")
       .forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
     clubPower=Number(btn.dataset.power);
+
+    phase="vertical";
+    document.getElementById("impactCursor").style.display="block";
   }
 });
 
-/* カーソル自動移動 */
+/* ===== カーソル移動 ===== */
 function moveCursor(){
   const cursor=document.getElementById("impactCursor");
 
@@ -277,7 +341,7 @@ function moveCursor(){
 }
 moveCursor();
 
-/* タップ処理 */
+/* ===== タップ処理 ===== */
 document.getElementById("impactZone").addEventListener("click",()=>{
   if(phase==="vertical"){
     phase="horizontal";
@@ -300,9 +364,10 @@ function swing(){
   velocity.y=topAdjust;
 
   setTimeout(()=>{
-    phase="vertical";
+    phase="idle";
     cursorX=0;
     cursorY=0;
+    document.getElementById("impactCursor").style.display="none";
   },800);
 }
 </script>
