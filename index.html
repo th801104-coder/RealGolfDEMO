@@ -87,7 +87,7 @@ html,body{
   line-height:1.25;
 }
 
-/* ★追加：エイム（矢印）操作 */
+/* エイム（矢印）操作 */
 #aimControls{
   position:absolute;
   top:122px; /* holeInfoの下 */
@@ -119,7 +119,7 @@ html,body{
 /* NiceON表示 */
 #banner{
   position:absolute;
-  top:96px; /* holeInfoの下あたり */
+  top:96px;
   left:10px;
   right:10px;
   text-align:center;
@@ -289,10 +289,8 @@ html,body{
     <canvas id="ballCanvas"></canvas>
     <div id="windInfo"></div>
 
-    <!-- 表示変更：残り距離 + 打数（英語） -->
     <div id="holeInfo">rest---y<br>first</div>
 
-    <!-- ★追加：エイム操作 -->
     <div id="aimControls">
       <button id="aimLeft" aria-label="aim left">◀</button>
       <div id="aimLabel">Aim: 0</div>
@@ -405,16 +403,12 @@ function nextStrokeWord(){
   const n = stroke + 1; // 次に打つ番
   return ORDINALS[n-1] || (n + "th");
 }
-
 function updateHoleInfo(){
   const y = remainingYards();
   document.getElementById("holeInfo").innerHTML = `rest${y}y<br>${nextStrokeWord()}`;
 }
 
-/* ===== エイム（矢印） =====
-   aimLevel: -2,-1,0,1,2 の5段階
-   角度ステップは 7°（調整しやすいように少し大きめ）
-*/
+/* ===== エイム（矢印） ===== */
 let aimLevel = 0;
 const AIM_MIN = -2;
 const AIM_MAX =  2;
@@ -427,7 +421,6 @@ updateAimUI();
 
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-/* iPhoneでも確実に反応するよう pointerdown を採用 */
 document.getElementById("aimLeft").addEventListener("pointerdown", (e)=>{
   e.preventDefault();
   if(isBallMoving) return;
@@ -455,6 +448,10 @@ let cursorY = 0;
 let cursorX = 0;
 let direction = 1;
 
+/* ★変更：ショットは「飛行フレーム数」だけ動いて着地即停止 */
+let flightFrame = 0;
+let flightFramesTotal = 0;
+
 function resize(){
   canvas.width = canvas.parentElement.clientWidth;
   canvas.height = canvas.parentElement.clientHeight;
@@ -468,6 +465,10 @@ function resetHole(){
   phase = "idle";
   isBallMoving = false;
   velocity.x = velocity.y = 0;
+
+  flightFrame = 0;
+  flightFramesTotal = 0;
+
   aimLevel = 0;
   updateAimUI();
 
@@ -485,12 +486,10 @@ function drawArrow(fromX, fromY, angleRad, length){
   const toX = fromX + Math.cos(angleRad) * length;
   const toY = fromY + Math.sin(angleRad) * length;
 
-  // 太線（黒） + 外枠っぽく白影
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
 
-  // 影/縁取り
   ctx.strokeStyle = "rgba(255,255,255,.65)";
   ctx.lineWidth = 8;
   ctx.beginPath();
@@ -498,7 +497,6 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
-  // 本体
   ctx.strokeStyle = "rgba(0,0,0,.75)";
   ctx.lineWidth = 4;
   ctx.beginPath();
@@ -506,7 +504,6 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.lineTo(toX, toY);
   ctx.stroke();
 
-  // 矢尻
   const headLen = 14;
   const a1 = angleRad + Math.PI * 0.85;
   const a2 = angleRad - Math.PI * 0.85;
@@ -534,39 +531,39 @@ function getAimAngleRad(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // エイム矢印（クラブ選択前でも常に表示：要望どおり）
-  // ただしボール移動中は矢印を薄くして邪魔にならないように
   const aimAngle = getAimAngleRad();
   ctx.save();
   if(isBallMoving) ctx.globalAlpha = 0.35;
   drawArrow(ball.x, ball.y, aimAngle, Math.min(canvas.width, canvas.height) * 0.18);
   ctx.restore();
 
-  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
   ctx.fill();
 
-  // Stroke表示（従来のデバッグ表示は残す）
   ctx.fillStyle="rgba(0,0,0,.55)";
   ctx.font="12px sans-serif";
   ctx.fillText(`Stroke: ${stroke}`, 10, canvas.height-10);
 }
 
-/* ===== ボール移動：停止→距離更新→ON判定 ===== */
+/* ===== ボール移動：着地したら即停止 ===== */
 function animate(){
   if(isBallMoving){
-    // 風（現状はx方向のみ。必要なら後でx/y両方にできます）
-    velocity.x += Math.cos(windDir*Math.PI/180) * windSpeed * 0.008;
-
+    // 位置更新（減速なし：飛行中の移動だけ）
     ball.x += velocity.x;
     ball.y += velocity.y;
 
-    velocity.x *= 0.985;
-    velocity.y *= 0.985;
+    // 風のドリフト（飛行中だけ少し流す）
+    const wx = Math.cos(windDir*Math.PI/180) * windSpeed * 0.18;
+    const wy = Math.sin(windDir*Math.PI/180) * windSpeed * 0.18;
+    ball.x += wx;
+    ball.y += wy;
 
-    if(Math.hypot(velocity.x, velocity.y) < 0.06){
+    flightFrame++;
+
+    // ★着地：ここで完全停止
+    if(flightFrame >= flightFramesTotal){
       isBallMoving = false;
       velocity.x = 0;
       velocity.y = 0;
@@ -663,7 +660,7 @@ function swingAndShot(){
 
   stroke += 1;
 
-  // ★方向は「矢印方向」を採用
+  // 方向は矢印方向
   const aimAngle = getAimAngleRad();
   const nx = Math.cos(aimAngle);
   const ny = Math.sin(aimAngle);
@@ -671,18 +668,21 @@ function swingAndShot(){
   // パワー（縦カーソルで微調整）
   const forwardScale = 1 + (-cursorY * 0.004);
 
-  // ※横カーソルは“ブレ”として少しだけ残す（不要なら0にできます）
-  //   「矢印方向に飛ぶ」を守るため、影響は小さめに
+  // 横カーソルは“ブレ”として少しだけ（不要なら 0 に）
   const sideScale    = (cursorX * 0.004);
 
   const speed = clubPower * 0.03;
 
-  // 矢印方向(nx,ny)に対して直角方向(px,py)
   const px = -ny;
   const py = nx;
 
   velocity.x = nx * speed * forwardScale + px * speed * sideScale;
   velocity.y = ny * speed * forwardScale + py * speed * sideScale;
+
+  // ★飛行フレーム数を決める（長いクラブほど少し長く飛ぶ）
+  // 調整ポイント：下の係数を変えると「着地点の距離感」が変わります
+  flightFrame = 0;
+  flightFramesTotal = Math.round(18 + speed * 1.9); // 例）1Wで ~30〜35フレーム
 
   isBallMoving = true;
 
