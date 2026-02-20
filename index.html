@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Real Golf! DEMO</title>
+
+<style>
+html, body { height:100%; margin:0; overflow:hidden; font-family:sans-serif; }
+
+.screen{
+  position:fixed; inset:0;
+  display:flex; justify-content:center; align-items:center;
+  flex-direction:column;
+}
+
+/* ---------- START ---------- */
+#startScreen{
+  background:url("https://images.unsplash.com/photo-1592919505780-303950717480?q=80&w=1600") center/cover;
+  color:white;
+}
+#startScreen h1{
+  font-size:48px;
+  text-shadow:0 4px 20px rgba(0,0,0,.6);
+}
+button{
+  padding:12px 20px;
+  border-radius:10px;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+}
+
+/* ---------- GAME ---------- */
+#gameScreen{ display:none; }
+
+#layout{
+  display:flex;
+  width:100%;
+  height:100vh;
+}
+
+#left{
+  width:50%;
+  position:relative;
+  background:#1f8f3a;
+}
+
+#ballCanvas{
+  position:absolute;
+  inset:0;
+}
+
+#windInfo{
+  position:absolute;
+  top:10px;
+  left:10px;
+  background:rgba(0,0,0,.3);
+  color:white;
+  padding:6px 10px;
+  border-radius:8px;
+  font-size:14px;
+}
+
+#commentary{
+  position:absolute;
+  bottom:10px;
+  left:10px;
+  right:10px;
+  background:rgba(0,0,0,.3);
+  color:white;
+  padding:8px;
+  border-radius:8px;
+  font-size:14px;
+}
+
+.club-buttons{
+  position:absolute;
+  bottom:60px;
+  left:10px;
+  display:flex;
+  gap:6px;
+}
+.club-buttons button{
+  background:white;
+  font-weight:bold;
+}
+.club-buttons button.active{
+  outline:3px solid gold;
+}
+
+/* ---------- RIGHT ---------- */
+#right{
+  width:50%;
+  display:flex;
+  flex-direction:column;
+}
+
+#impactZone{
+  flex:1;
+  background:#111;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  position:relative;
+}
+
+#ballUI{
+  width:300px;
+  height:300px;
+  position:relative;
+}
+
+#ballCircle{
+  position:absolute;
+  inset:0;
+  border-radius:50%;
+  background:radial-gradient(circle at 30% 30%, white, #ddd);
+}
+
+.cursor{
+  position:absolute;
+  width:22px;
+  height:22px;
+  border:3px solid yellow;
+  border-radius:6px;
+}
+
+#playerZone{
+  flex:1;
+  background:url("https://images.unsplash.com/photo-1520166012956-add9ba0835cb?q=80&w=1400") center/cover;
+  position:relative;
+  display:flex;
+  justify-content:center;
+  align-items:flex-end;
+  overflow:hidden;
+}
+
+#golferImg{
+  width:90%;
+  height:90%;
+  object-fit:contain;
+  filter:drop-shadow(0 12px 18px rgba(0,0,0,.45));
+}
+
+#playerZone.swing #golferImg{
+  animation:swing .5s ease-in-out forwards;
+}
+
+@keyframes swing{
+  0%{ transform:rotate(-10deg); }
+  50%{ transform:rotate(18deg); }
+  100%{ transform:rotate(8deg); }
+}
+</style>
+</head>
+
+<body>
+
+<div id="startScreen" class="screen">
+  <h1>REAL GOLF!</h1>
+  <button onclick="startGame()">START</button>
+</div>
+
+<div id="gameScreen">
+  <div id="layout">
+
+    <div id="left">
+      <canvas id="ballCanvas"></canvas>
+      <div id="windInfo"></div>
+      <div id="commentary"></div>
+
+      <div class="club-buttons">
+        <button data-power="220">1W</button>
+        <button data-power="190">3W</button>
+        <button data-power="160" class="active">5I</button>
+        <button data-power="140">7I</button>
+        <button data-power="110">9I</button>
+        <button data-power="60">SW</button>
+      </div>
+    </div>
+
+    <div id="right">
+      <div id="impactZone">
+        <div id="ballUI">
+          <div id="ballCircle"></div>
+        </div>
+      </div>
+
+      <div id="playerZone">
+        <img id="golferImg" src="assets/golfer.png">
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById("ballCanvas");
+const ctx = canvas.getContext("2d");
+
+let windSpeed = 0;
+let windDir = 0;
+let clubPower = 160;
+
+function resizeCanvas(){
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+}
+window.addEventListener("resize", resizeCanvas);
+
+function startGame(){
+  document.getElementById("startScreen").style.display="none";
+  document.getElementById("gameScreen").style.display="block";
+
+  setTimeout(()=>{
+    resizeCanvas();
+    generateWind();
+    drawCourse();
+  },50);
+}
+
+function generateWind(){
+  windSpeed = Math.floor(Math.random()*6);
+  windDir = Math.floor(Math.random()*360);
+  document.getElementById("windInfo").innerText =
+    `風向: ${windDir}°  風速: ${windSpeed}m`;
+
+  let msg = windSpeed===0
+    ? "無風です。"
+    : windSpeed<=2
+      ? "弱い風です。"
+      : "強風です。注意してください。";
+
+  document.getElementById("commentary").innerText = msg;
+}
+
+function drawCourse(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const tee = {x:80, y:canvas.height-80};
+  const green = {x:canvas.width-120, y:120};
+
+  const angle = Math.atan2(green.y-tee.y, green.x-tee.x);
+
+  // フェアウェイ
+  ctx.fillStyle="rgba(0,0,0,.15)";
+  ctx.beginPath();
+  ctx.ellipse((tee.x+green.x)/2,(tee.y+green.y)/2,
+    canvas.width*.28,canvas.height*.18,
+    angle,0,Math.PI*2);
+  ctx.fill();
+
+  // グリーン
+  ctx.fillStyle="rgba(120,255,120,.4)";
+  ctx.beginPath();
+  ctx.arc(green.x,green.y,40,0,Math.PI*2);
+  ctx.fill();
+
+  // ピン
+  ctx.strokeStyle="white";
+  ctx.beginPath();
+  ctx.moveTo(green.x,green.y-40);
+  ctx.lineTo(green.x,green.y+10);
+  ctx.stroke();
+
+  // ボール
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(tee.x,tee.y,6,0,Math.PI*2);
+  ctx.fill();
+}
+
+// クラブ切替
+document.querySelectorAll(".club-buttons button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".club-buttons button")
+      .forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    clubPower = Number(btn.dataset.power);
+  });
+});
+</script>
+
+</body>
+</html>
