@@ -26,12 +26,10 @@ html,body{
   color:white;
   z-index:100;
 }
-
 #startScreen h1{
   font-size:48px;
   text-shadow:0 4px 20px rgba(0,0,0,.6);
 }
-
 #startBtn{
   padding:12px 24px;
   border:none;
@@ -47,13 +45,15 @@ html,body{
   height:100%;
 }
 
-/* ===== 左：コース ===== */
+/* ===== 左：コース（背景に画像） ===== */
 #left{
   width:50vw;
-  background:#1f8f3a;
   position:relative;
+  /* ★コース画像を左エリアに表示（縦長を収める） */
+  background:#0f5f2a url("assets/course.png") center/contain no-repeat;
 }
 
+/* ボール描画用（透明のまま上に乗せる） */
 #ballCanvas{
   position:absolute;
   inset:0;
@@ -71,16 +71,16 @@ html,body{
   z-index:10;
 }
 
+/* クラブ */
 .club-buttons{
   position:absolute;
-  bottom:70px;
+  bottom:70px; /* iPhoneでも見切れにくい */
   left:10px;
   display:flex;
   gap:6px;
   flex-wrap:wrap;
   z-index:10;
 }
-
 .club-buttons button{
   padding:8px 12px;
   border:none;
@@ -88,7 +88,6 @@ html,body{
   font-weight:bold;
   font-size:14px;
 }
-
 .club-buttons button.active{
   outline:3px solid gold;
 }
@@ -109,7 +108,6 @@ html,body{
   align-items:center;
   position:relative;
 }
-
 #ballUI{
   width:220px;
   height:220px;
@@ -121,12 +119,10 @@ html,body{
   width:100%;
   height:100%;
   border-radius:50%;
-  background:
-    radial-gradient(circle at 30% 30%, white, #ddd);
+  background:radial-gradient(circle at 30% 30%, white, #ddd);
   position:relative;
   overflow:hidden;
 }
-
 /* ディンプル */
 .dimple{
   position:absolute;
@@ -136,7 +132,7 @@ html,body{
   background:rgba(0,0,0,.08);
 }
 
-/* ＋カーソル */
+/* ＋カーソル（クラブ選択後のみ表示） */
 #impactCursor{
   position:absolute;
   width:40px;
@@ -144,23 +140,20 @@ html,body{
   left:50%;
   top:50%;
   transform:translate(-50%,-50%);
-  display:none; /* ← 初期は非表示 */
+  display:none;
 }
-
 #impactCursor::before,
 #impactCursor::after{
   content:"";
   position:absolute;
   background:black;
 }
-
 #impactCursor::before{
   width:6px;
   height:100%;
   left:50%;
   transform:translateX(-50%);
 }
-
 #impactCursor::after{
   height:6px;
   width:100%;
@@ -177,18 +170,17 @@ html,body{
   align-items:flex-end;
   overflow:hidden;
 }
-
 #golferImg{
   height:80%;
   object-fit:contain;
   transition:transform .3s;
 }
-
 .swing{
   transform:rotate(25deg);
 }
 </style>
 </head>
+
 <body>
 
 <!-- オープニング -->
@@ -197,56 +189,58 @@ html,body{
   <button id="startBtn">START</button>
 </div>
 
+<!-- ゲーム -->
 <div id="layout" style="display:none;">
 
-<!-- 左 -->
-<div id="left">
-  <canvas id="ballCanvas"></canvas>
-  <div id="windInfo"></div>
+  <!-- 左 -->
+  <div id="left">
+    <canvas id="ballCanvas"></canvas>
+    <div id="windInfo"></div>
 
-  <div class="club-buttons">
-    <button data-power="220">1W</button>
-    <button data-power="190">3W</button>
-    <button data-power="160">5I</button>
-    <button data-power="140">7I</button>
-    <button data-power="110">9I</button>
-    <button data-power="60">SW</button>
-  </div>
-</div>
-
-<!-- 右 -->
-<div id="right">
-  <div id="impactZone">
-    <div id="ballUI">
-      <div id="ballCircle"></div>
-      <div id="impactCursor"></div>
+    <div class="club-buttons">
+      <button data-power="220">1W</button>
+      <button data-power="190">3W</button>
+      <button data-power="160">5I</button>
+      <button data-power="140">7I</button>
+      <button data-power="110">9I</button>
+      <button data-power="60">SW</button>
     </div>
   </div>
 
-  <div id="playerZone">
-    <img id="golferImg" src="assets/golfer.png">
+  <!-- 右 -->
+  <div id="right">
+    <div id="impactZone">
+      <div id="ballUI">
+        <div id="ballCircle"></div>
+        <div id="impactCursor"></div>
+      </div>
+    </div>
+
+    <div id="playerZone">
+      <img id="golferImg" src="assets/golfer.png" alt="golfer">
+    </div>
   </div>
-</div>
 
 </div>
 
 <script>
-/* ===== vh補正 ===== */
+/* ===== iPhone Safariの100vh問題対策 ===== */
 function setRealHeight(){
   document.body.style.height = window.innerHeight + "px";
 }
 window.addEventListener("resize", setRealHeight);
 setRealHeight();
 
-/* ===== スタート処理 ===== */
+/* ===== スタート ===== */
 document.getElementById("startBtn").onclick = ()=>{
   document.getElementById("startScreen").style.display="none";
   document.getElementById("layout").style.display="flex";
+  setTimeout(()=>{ resize(); draw(); }, 50);
 };
 
 /* ===== ディンプル生成 ===== */
 const ballCircle = document.getElementById("ballCircle");
-for(let i=0;i<80;i++){
+for(let i=0;i<90;i++){
   const d=document.createElement("div");
   d.className="dimple";
   d.style.left=Math.random()*100+"%";
@@ -254,121 +248,193 @@ for(let i=0;i<80;i++){
   ballCircle.appendChild(d);
 }
 
-/* ===== ゲーム ===== */
+/* ===== ゲーム（左canvasはボールだけ描く） ===== */
 const canvas = document.getElementById("ballCanvas");
 const ctx = canvas.getContext("2d");
 
-let clubPower=0;
-let windSpeed=Math.random()*2;
-let windDir=Math.random()*360;
+let clubPower = 0;            // 未選択は0（重要）
+let windSpeed = Math.random()*2;
+let windDir = Math.random()*360;
 
-let ball={x:100,y:400};
-let velocity={x:0,y:0};
+document.getElementById("windInfo").innerText =
+  `風向:${Math.floor(windDir)}° 風速:${windSpeed.toFixed(1)}m`;
 
-let phase="idle";
-let cursorY=0;
-let cursorX=0;
-let direction=1;
+/**
+ * ティーとグリーンの位置（canvasに対する割合で設定）
+ * 画像が contain で表示されるので、”だいたい”の位置を割合で決めるのが安定。
+ * 必要ならここだけ微調整してOK。
+ */
+function getTeePos(){
+  return { x: canvas.width*0.55, y: canvas.height*0.88 }; // 下寄り
+}
+function getGreenPos(){
+  return { x: canvas.width*0.62, y: canvas.height*0.12 }; // 上寄り
+}
+
+let ball = { x: 0, y: 0 };
+let velocity = { x: 0, y: 0 };
+let isBallMoving = false;
+
+let phase = "idle"; // idle -> vertical -> horizontal -> done
+let cursorY = 0;
+let cursorX = 0;
+let direction = 1;
 
 function resize(){
-  canvas.width=canvas.parentElement.clientWidth;
-  canvas.height=canvas.parentElement.clientHeight;
-  ball.y=canvas.height-60;
-}
-window.addEventListener("resize",resize);
-resize();
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
 
-document.getElementById("windInfo").innerText=
-  `風向:${Math.floor(windDir)}° 風速:${windSpeed.toFixed(1)}m`;
+  // 初期位置はティーに置く
+  const tee = getTeePos();
+  if(!isBallMoving){
+    ball.x = tee.x;
+    ball.y = tee.y;
+  }
+}
+window.addEventListener("resize", resize);
+resize();
 
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.fillStyle="rgba(0,0,0,.2)";
-  ctx.beginPath();
-  ctx.ellipse(canvas.width-120,120,120,60,0,0,Math.PI*2);
-  ctx.fill();
-
+  // ボールだけ描画（背景はCSSのコース画像）
   ctx.fillStyle="white";
   ctx.beginPath();
-  ctx.arc(ball.x,ball.y,6,0,Math.PI*2);
+  ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
   ctx.fill();
 }
 
-function animateBall(){
-  ball.x+=velocity.x;
-  ball.y+=velocity.y;
+function animate(){
+  if(isBallMoving){
+    // 風はx方向にほんの少し
+    velocity.x += Math.cos(windDir*Math.PI/180) * windSpeed * 0.01;
 
-  velocity.x+=Math.cos(windDir*Math.PI/180)*windSpeed*0.02;
-  velocity.x*=0.99;
-  velocity.y*=0.99;
+    // 更新
+    ball.x += velocity.x;
+    ball.y += velocity.y;
+
+    // 摩擦（減速）
+    velocity.x *= 0.985;
+    velocity.y *= 0.985;
+
+    // ほぼ止まったら終了
+    if(Math.hypot(velocity.x, velocity.y) < 0.05){
+      isBallMoving = false;
+      velocity.x = 0;
+      velocity.y = 0;
+    }
+  }
 
   draw();
-  requestAnimationFrame(animateBall);
+  requestAnimationFrame(animate);
 }
-animateBall();
+animate();
 
-/* ===== クラブ選択 ===== */
+/* ===== クラブ選択（選択後だけカーソル作動） ===== */
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
     document.querySelectorAll(".club-buttons button")
       .forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    clubPower=Number(btn.dataset.power);
 
-    phase="vertical";
-    document.getElementById("impactCursor").style.display="block";
-  }
+    clubPower = Number(btn.dataset.power);
+
+    // クラブ選択が終わったら、操作フェーズ開始
+    phase = "vertical";
+    cursorX = 0;
+    cursorY = 0;
+    direction = 1;
+
+    const cursor = document.getElementById("impactCursor");
+    cursor.style.display = "block";
+    cursor.style.left = "50%";
+    cursor.style.top  = "50%";
+  };
 });
 
-/* ===== カーソル移動 ===== */
+/* ===== カーソル移動（phaseがvertical/horizontalの時だけ動く） ===== */
 function moveCursor(){
-  const cursor=document.getElementById("impactCursor");
+  const cursor = document.getElementById("impactCursor");
 
   if(phase==="vertical"){
-    cursorY+=direction*2;
-    if(cursorY>50||cursorY<-50) direction*=-1;
-    cursor.style.top=50+cursorY+"%";
-  }
-
-  if(phase==="horizontal"){
-    cursorX+=direction*2;
-    if(cursorX>50||cursorX<-50) direction*=-1;
-    cursor.style.left=50+cursorX+"%";
+    cursorY += direction*2;
+    if(cursorY>50 || cursorY<-50) direction*=-1;
+    cursor.style.top = (50 + cursorY) + "%";
+    cursor.style.left = "50%";
+  }else if(phase==="horizontal"){
+    cursorX += direction*2;
+    if(cursorX>50 || cursorX<-50) direction*=-1;
+    cursor.style.left = (50 + cursorX) + "%";
+    cursor.style.top  = "50%";
+  }else{
+    // idle/done は中心固定（クラブ未選択時もここ）
+    cursor.style.left = "50%";
+    cursor.style.top  = "50%";
   }
 
   requestAnimationFrame(moveCursor);
 }
 moveCursor();
 
-/* ===== タップ処理 ===== */
+/* ===== タップ順：上下固定 → 左右固定 → スイング → ボール移動 ===== */
 document.getElementById("impactZone").addEventListener("click",()=>{
+  // クラブ未選択は何もしない（中心固定）
+  if(clubPower<=0) return;
+
   if(phase==="vertical"){
     phase="horizontal";
     direction=1;
   }else if(phase==="horizontal"){
     phase="done";
-    swing();
+    swingAndShot();
   }
 });
 
-function swing(){
+function swingAndShot(){
+  // スイング
   const golfer=document.getElementById("golferImg");
   golfer.classList.add("swing");
   setTimeout(()=>golfer.classList.remove("swing"),300);
 
-  let topAdjust=-cursorY*0.2;
-  let sideAdjust=cursorX*0.3;
+  // ティー→グリーン方向の基準ベクトル
+  const tee = getTeePos();
+  const green = getGreenPos();
+  const dx = green.x - tee.x;
+  const dy = green.y - tee.y;
+  const len = Math.hypot(dx,dy) || 1;
 
-  velocity.x=clubPower*0.05+sideAdjust;
-  velocity.y=topAdjust;
+  // 基準方向（グリーンへ向かう）
+  const nx = dx / len;
+  const ny = dy / len;
 
+  // インパクト反映（ざっくり）
+  // cursorY: 上(マイナス)＝トップっぽい → 飛ぶ(前進増)
+  //         下(プラス)＝ダフリっぽい → 飛ばない(前進減)
+  const forwardScale = 1 + (-cursorY * 0.004); // -50..50 => 1.2..0.8 くらい
+  const sideScale    = (cursorX * 0.010);      // -50..50 => -0.5..0.5 くらい（横ズレ）
+
+  // ショットの強さ（クラブpowerを速度に）
+  const speed = clubPower * 0.03;
+
+  // 方向ベクトルに「横ズレ」を加える（直交方向）
+  const px = -ny; // 90度回転（右方向）
+  const py = nx;
+
+  velocity.x = nx * speed * forwardScale + px * speed * sideScale;
+  velocity.y = ny * speed * forwardScale + py * speed * sideScale;
+
+  // ボールをティーに置いてスタート
+  ball.x = tee.x;
+  ball.y = tee.y;
+  isBallMoving = true;
+
+  // 一連終了 → 次のショットはクラブ再選択からにするなら clubPower=0 にする
+  // 今回は「次も同クラブで打てる」方が遊びやすいので clubPower は維持
   setTimeout(()=>{
     phase="idle";
-    cursorX=0;
-    cursorY=0;
     document.getElementById("impactCursor").style.display="none";
-  },800);
+    cursorX=0; cursorY=0;
+  }, 700);
 }
 </script>
 
