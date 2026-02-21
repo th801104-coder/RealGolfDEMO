@@ -1002,7 +1002,7 @@ function swingAndShotCourse(){
   const ny = Math.sin(aimAngle);
 
   const forwardScale = 1 + (-cursorY * 0.004);
-  const sideScale    = (cursorX * 0.004);
+  const sideScale    = (-cursorX * 0.004);
 
   const scale = holePowerScale();           // ★ホール別縮尺補正
 const adjPower = clubPower * scale;       // ★補正後のパワー
