@@ -463,6 +463,7 @@ html,body{
       <button data-power="140">7I</button>
       <button data-power="110">9I</button>
       <button data-power="60">SW</button>
+      <button data-power="25" data-type="putter">PT</button>
     </div>
   </div>
 
@@ -753,6 +754,7 @@ leftEl.addEventListener("pointercancel", endSwipe);
 /* ---- コース状態 ---- */
 let stroke = 0;
 let clubPower = 0;
+let currentClubType = "normal";
 
 let courseBall = { x: 0, y: 0 };
 let courseVel  = { x: 0, y: 0 };
@@ -946,6 +948,7 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
     btn.classList.add("active");
 
     clubPower = Number(btn.dataset.power);
+currentClubType = btn.dataset.type === "putter" ? "putter" : "normal";
 
     phase = "vertical";
     cursorX = 0;
@@ -1010,8 +1013,18 @@ function swingAndShotCourse(){
 
   const scale = holePowerScale();           // ★ホール別縮尺補正
 const adjPower = clubPower * scale;       // ★補正後のパワー
-const speed = adjPower * 0.03;
-spin = -cursorX * 0.0003;   // ★追加：左右反転済み
+let speed;
+
+if(currentClubType === "putter"){
+  speed = adjPower * 0.015;   // 半分以下に
+}else{
+  speed = adjPower * 0.03;
+}
+if(currentClubType === "putter"){
+  spin = -cursorX * 0.0001;  // 転がしは曲がりにくい
+}else{
+  spin = -cursorX * 0.0003;
+}
 
   const px = -ny;
   const py = nx;
