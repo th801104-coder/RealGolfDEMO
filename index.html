@@ -757,6 +757,7 @@ let clubPower = 0;
 let courseBall = { x: 0, y: 0 };
 let courseVel  = { x: 0, y: 0 };
 let isCourseBallMoving = false;
+let spin = 0;   // ★追加：ボール回転（横曲がり用）
 
 let phase = "idle";
 let cursorY = 0;
@@ -890,6 +891,9 @@ function animateCourse(){
   if(isCourseBallMoving){
     courseBall.x += courseVel.x;
     courseBall.y += courseVel.y;
+      // ★スピンによる横曲がり（飛距離があるほど曲がる）
+  const currentSpeed = Math.hypot(courseVel.x, courseVel.y);
+  courseVel.x += spin * currentSpeed;
 
     const rad = windDirDeg * Math.PI / 180;
     const WIND_SCALE = 0.22;
@@ -1007,6 +1011,7 @@ function swingAndShotCourse(){
   const scale = holePowerScale();           // ★ホール別縮尺補正
 const adjPower = clubPower * scale;       // ★補正後のパワー
 const speed = adjPower * 0.03;
+spin = -cursorX * 0.0008;   // ★追加：左右反転済み
 
   const px = -ny;
   const py = nx;
