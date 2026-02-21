@@ -519,6 +519,44 @@ const HOLES = [
   }
 ];
 
+  // ===== ホールごとの縮尺補正（方式B）=====
+// 基準ホールは 1H（holeIndex=0）
+let pxPerYardRef = null;
+
+// tee->green のピクセル距離
+function teeToGreenPxForHole(h){
+  const w = courseCanvas.width;
+  const hgt = courseCanvas.height;
+  const teeX = w * h.tee.x;
+  const teeY = hgt * h.tee.y;
+  const gX = w * h.green.x;
+  const gY = hgt * h.green.y;
+  return Math.hypot(gX - teeX, gY - teeY);
+}
+
+// このホールのスケール倍率を返す
+function holePowerScale(){
+  const h = currentHole();
+
+  // 画面サイズ依存なので、リサイズ後やホール開始時に更新したい
+  const basePx = teeToGreenPxForHole(h);
+  const pxPerYard = basePx / (h.yards || 1);
+
+  // 基準（1H）の値が未確定なら今のcanvasサイズで確定させる
+  if(pxPerYardRef == null){
+    const h0 = HOLES[0];
+    const basePx0 = teeToGreenPxForHole(h0);
+    pxPerYardRef = basePx0 / (h0.yards || 1);
+  }
+
+  // 例：pxPerYardが大きいホールは、同じpowerだと飛びが短く感じる→scaleで増やす
+  // scale = ref / current
+  const scale = pxPerYardRef / (pxPerYard || 1e-6);
+
+  // 極端な補正で壊れないように軽く制限（好みで調整OK）
+  return Math.max(0.75, Math.min(1.35, scale));
+}
+
 let holeIndex = 0;              // 0..2
 let holeStrokes = [0,0,0];      // 各ホールの打数を保存
 
@@ -712,8 +750,11 @@ function resizeCourse(){
   courseCanvas.width = courseCanvas.parentElement.clientWidth;
   courseCanvas.height = courseCanvas.parentElement.clientHeight;
 }
-window.addEventListener("resize", ()=>{ resizeCourse(); drawCourse(); });
-resizeCourse();
+window.addEventListener("resize", ()=>{
+  resizeCourse();
+  pxPerYardRef = null;   // ★画面サイズが変わったら基準縮尺を作り直す
+  drawCourse();
+});  
 
 /* ---- リセット（ホールごと） ---- */
 function resetHole(){
@@ -942,7 +983,9 @@ function swingAndShotCourse(){
   const forwardScale = 1 + (-cursorY * 0.004);
   const sideScale    = (cursorX * 0.004);
 
-  const speed = clubPower * 0.03;
+  const scale = holePowerScale();           // ★ホール別縮尺補正
+const adjPower = clubPower * scale;       // ★補正後のパワー
+const speed = adjPower * 0.03;
 
   const px = -ny;
   const py = nx;
