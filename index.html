@@ -57,7 +57,7 @@ html,body{
   inset:0;
 }
 
-/* 上から：ホール情報 */
+/* ホール情報 */
 #holeInfo{
   position:absolute;
   top:10px;
@@ -72,6 +72,7 @@ html,body{
   z-index:10;
   border:1px solid rgba(255,255,255,.15);
   line-height:1.25;
+  white-space:pre-line;
 }
 
 /* 風 */
@@ -332,7 +333,7 @@ html,body{
   border:1px solid rgba(255,255,255,.16);
   border-radius:16px;
   padding:16px 18px;
-  max-width:min(620px, 90vw);
+  max-width:min(720px, 92vw);
 }
 #holeOutBanner h2{
   margin:0 0 8px 0;
@@ -352,6 +353,41 @@ html,body{
   font-weight:900;
   cursor:pointer;
   margin:0 6px;
+}
+
+/* ===== Score Table ===== */
+#scoreTableWrap{
+  margin-top:12px;
+  overflow-x:auto;
+}
+.scoreTable{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+  font-weight:900;
+  background:rgba(0,0,0,.35);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:12px;
+  overflow:hidden;
+}
+.scoreTable th,
+.scoreTable td{
+  padding:10px 8px;
+  text-align:center;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  border-right:1px solid rgba(255,255,255,.12);
+  min-width:64px;
+}
+.scoreTable tr:last-child td{ border-bottom:none; }
+.scoreTable th:last-child,
+.scoreTable td:last-child{ border-right:none; }
+.scoreTable .rowLabel{
+  text-align:left;
+  min-width:72px;
+  opacity:.95;
+}
+.scoreTable .sumCol{
+  background:rgba(255,255,255,.06);
 }
 </style>
 </head>
@@ -392,6 +428,10 @@ html,body{
       <div class="inner">
         <h2 id="holeOutTitle">HOLE OUT!</h2>
         <p id="holeOutText">Great putt!</p>
+
+        <!-- ★スコア表 -->
+        <div id="scoreTableWrap"></div>
+
         <div>
           <button id="nextHoleBtn">次ホール</button>
           <button id="stayBtn">コースに戻る</button>
@@ -450,7 +490,7 @@ window.addEventListener("resize", setRealHeight);
 setRealHeight();
 
 /* =========================
-   3ホール設定（ここを調整すればコース位置を合わせられます）
+   3ホール設定（必要に応じて tee/green を調整）
 ========================= */
 const HOLES = [
   {
@@ -500,6 +540,7 @@ document.getElementById("startBtn").onclick = ()=>{
 
 /* ===== ゴルファー：コマ送り（5枚） ===== */
 const golferImg = document.getElementById("golferImg");
+
 const SWING_FRAMES = [
   "assets/golfer_1.png",
   "assets/golfer_2.png",
@@ -509,6 +550,7 @@ const SWING_FRAMES = [
 ];
 SWING_FRAMES.forEach(src => { const im = new Image(); im.src = src; });
 golferImg.src = SWING_FRAMES[0];
+
 let swingAnimTimer = null;
 
 function playSwingAnimation(){
@@ -516,6 +558,7 @@ function playSwingAnimation(){
 
   let i = 0;
   golferImg.src = SWING_FRAMES[i];
+
   const frameMs = 160;
 
   swingAnimTimer = setInterval(()=>{
@@ -575,7 +618,7 @@ function remainingYards(){
   return Math.max(0, Math.round((d / base) * h.yards));
 }
 
-/* ---- 打数表示（先頭大文字） ---- */
+/* ---- 打数（先頭大文字） ---- */
 const ORDINALS = [
   "first","second","third","fourth","fifth",
   "sixth","seventh","eighth","ninth","tenth",
@@ -590,8 +633,8 @@ function updateHoleInfo(){
   const h = currentHole();
   const y = remainingYards();
 
-  const totalSt = totalStrokesUpTo(holeIndex-1);
-  const totalPar = totalParUpTo(holeIndex-1);
+  const totalSt = (holeIndex > 0) ? totalStrokesUpTo(holeIndex-1) : 0;
+  const totalPar = (holeIndex > 0) ? totalParUpTo(holeIndex-1) : 0;
   const totalLine = (holeIndex > 0) ? `\nTotal: ${totalSt} / Par${totalPar}` : "";
 
   document.getElementById("holeInfo").innerText =
@@ -766,17 +809,14 @@ function drawGreenGuideCourse(){
 function drawCourse(){
   courseCtx.clearRect(0,0,courseCanvas.width,courseCanvas.height);
 
-  // グリーン赤円
   drawGreenGuideCourse();
 
-  // エイム矢印
   const aimAngle = getCourseAimAngleRad();
   courseCtx.save();
   if(isCourseBallMoving) courseCtx.globalAlpha = 0.35;
   drawArrow(courseCtx, courseBall.x, courseBall.y, aimAngle, Math.min(courseCanvas.width, courseCanvas.height) * 0.18);
   courseCtx.restore();
 
-  // ボール
   courseCtx.fillStyle="white";
   courseCtx.beginPath();
   courseCtx.arc(courseBall.x, courseBall.y, 6, 0, Math.PI*2);
@@ -836,8 +876,7 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
 
     golferImg.src = SWING_FRAMES[0];
 
-    document.querySelectorAll(".club-buttons button")
-      .forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".club-buttons button").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
 
     clubPower = Number(btn.dataset.power);
@@ -924,7 +963,7 @@ function swingAndShotCourse(){
 }
 
 /* =========================
-   GREEN MODE（楕円＋音＋止まる物理＋スコア表示）
+   GREEN MODE（楕円＋音＋止まる物理＋スコア表）
 ========================= */
 const greenOverlay = document.getElementById("greenOverlay");
 const greenCanvas = document.getElementById("greenCanvas");
@@ -1031,6 +1070,7 @@ let gSlope = { ax: 0, ay: 0 };
 let gAimLevel = 0;
 let gMoving = false;
 
+/* ★矢印の基準角度（常にカップ方向） */
 let gAimBaseAngle = -Math.PI/2;
 function updateAimBaseToCup(){
   gAimBaseAngle = Math.atan2(gCup.y - gBall.y, gCup.x - gBall.x);
@@ -1055,8 +1095,10 @@ function resizeGreen(){
 window.addEventListener("resize", ()=>{ resizeGreen(); drawGreen(); });
 resizeGreen();
 
+/* コース→グリーン初期位置 */
 function courseToGreenStart(){
   const e = getGreenEllipse();
+
   const gc = getGreenCenter();
   const r  = getGreenRadius() || 1;
 
@@ -1125,6 +1167,7 @@ function setPowerUI(){
   marker.style.left = `calc(${pct}% - 2px)`;
 }
 
+/* 方向：左右スワイプで調整 */
 function clampInt(v, min, max){ return Math.max(min, Math.min(max, v|0)); }
 
 greenOverlay.addEventListener("pointerdown", (e)=>{
@@ -1166,10 +1209,13 @@ function endGreenSwipe(e){
 greenOverlay.addEventListener("pointerup", endGreenSwipe);
 greenOverlay.addEventListener("pointercancel", endGreenSwipe);
 
+/* タップでパット */
 greenOverlay.addEventListener("click", (e)=>{
   if(!inGreenMode) return;
+
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
+
   if(gMoving) return;
   puttNow();
 });
@@ -1213,7 +1259,7 @@ document.getElementById("nextHoleBtn").onclick = ()=>{
   inGreenMode = false;
   greenOverlay.style.display = "none";
 
-  // 次ホールへ（最終ならリスタート）
+  // 次ホールへ（最終なら3Hを最初から）
   if(holeIndex < HOLES.length - 1){
     holeIndex++;
     windSpeed = 0.8 + Math.random()*2.2;
@@ -1221,7 +1267,6 @@ document.getElementById("nextHoleBtn").onclick = ()=>{
     updateWindUI();
     resetHole();
   }else{
-    // 3H終了：最初に戻す（TotalはHoleOutで出している）
     holeIndex = 0;
     holeStrokes = [0,0,0];
     windSpeed = 0.8 + Math.random()*2.2;
@@ -1256,9 +1301,11 @@ function drawGreen(){
 
   const e = getGreenEllipse();
 
+  // 背景
   gctx.fillStyle = "black";
   gctx.fillRect(0,0,w,h);
 
+  // 外側（濃い緑）
   gctx.save();
   gctx.fillStyle = "rgba(22,120,70,1)";
   gctx.globalAlpha = 0.95;
@@ -1267,6 +1314,7 @@ function drawGreen(){
   gctx.fill();
   gctx.restore();
 
+  // グリーン本体
   const grad = gctx.createRadialGradient(
     e.cx - e.rx*0.25, e.cy - e.ry*0.25, 20,
     e.cx, e.cy, Math.max(e.rx,e.ry)*1.05
@@ -1279,11 +1327,13 @@ function drawGreen(){
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
   gctx.fill();
 
+  // クリップ（楕円内だけ描画）
   gctx.save();
   gctx.beginPath();
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
   gctx.clip();
 
+  // 傾斜ライン
   const cx = w*0.5;
   const cy = h*0.5;
   const a = Math.atan2(gSlope.ay, gSlope.ax);
@@ -1307,6 +1357,7 @@ function drawGreen(){
   }
   gctx.restore();
 
+  // カップ
   gctx.save();
   gctx.fillStyle = "rgba(0,0,0,.55)";
   gctx.beginPath();
@@ -1320,26 +1371,30 @@ function drawGreen(){
   gctx.stroke();
   gctx.restore();
 
+  // 矢印（静止中のみ）
   if(!gMoving){
     const ang = getGreenAimAngle();
     drawArrow(gctx, gBall.x, gBall.y, ang, 90);
   }
 
+  // ボール
   gctx.fillStyle = "white";
   gctx.beginPath();
   gctx.arc(gBall.x, gBall.y, 9, 0, Math.PI*2);
   gctx.fill();
 
+  // 影
   gctx.fillStyle = "rgba(0,0,0,.25)";
   gctx.beginPath();
   gctx.ellipse(gBall.x+2, gBall.y+10, 10, 5, 0, 0, Math.PI*2);
   gctx.fill();
 
-  gctx.restore();
+  gctx.restore(); // clip解除
 
   updateGreenHUD();
 }
 
+/* グリーン物理（止まるように強めの抵抗） */
 function animateGreen(){
   if(inGreenMode){
     powerT += powerDir * powerSpeed;
@@ -1348,16 +1403,20 @@ function animateGreen(){
     setPowerUI();
 
     if(gMoving){
+      // 傾斜
       gVel.x += gSlope.ax;
       gVel.y += gSlope.ay;
 
+      // 位置更新
       gBall.x += gVel.x;
       gBall.y += gVel.y;
 
+      // 摩擦
       const FRICTION = 0.962;
       gVel.x *= FRICTION;
       gVel.y *= FRICTION;
 
+      // 転がり抵抗
       let sp = Math.hypot(gVel.x, gVel.y);
       if(sp > 0.0001){
         const ROLL_RESIST = 0.028;
@@ -1365,11 +1424,13 @@ function animateGreen(){
         gVel.y -= (gVel.y / sp) * ROLL_RESIST;
       }
 
+      // 楕円外に出ない
       const e = getGreenEllipse();
       resolveEllipseCollision(gBall, gVel, e);
 
       sp = Math.hypot(gVel.x, gVel.y);
 
+      // カップ判定（近い＆遅い）
       const d = Math.hypot(gBall.x - gCup.x, gBall.y - gCup.y);
       if(d <= gCup.r*0.92 && sp < 1.6){
         gMoving = false;
@@ -1379,6 +1440,7 @@ function animateGreen(){
         showHoleOut();
       }
 
+      // 完全停止
       if(sp < 0.22){
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
@@ -1394,6 +1456,55 @@ function animateGreen(){
 }
 animateGreen();
 
+/* ===== スコア表（4段 + 右端合計） ===== */
+function buildScoreTableHTML(){
+  const holes = HOLES;
+  const pars = holes.map(h=>h.par);
+
+  // 未完は空欄にする（holeStrokes[i] が 0 の場合は空）
+  const strokesArr = holes.map((_,i)=>holeStrokes[i] || 0);
+  const diffs = holes.map((h,i)=>{
+    const s = holeStrokes[i];
+    if(!s) return "";
+    return (s - h.par);
+  });
+
+  const sumPar = pars.reduce((a,v)=>a+v,0);
+  const sumStrokes = holeStrokes.reduce((a,v)=>a+(v||0),0);
+  const sumDiff = sumStrokes ? (sumStrokes - sumPar) : "";
+
+  const diffText = (d)=>{
+    if(d === "") return "";
+    if(d === 0) return "0";
+    return (d > 0) ? `+${d}` : `${d}`;
+  };
+
+  return `
+    <table class="scoreTable">
+      <tr>
+        <th class="rowLabel">HOLE</th>
+        ${holes.map(h=>`<th>${h.no}H</th>`).join("")}
+        <th class="sumCol">合計</th>
+      </tr>
+      <tr>
+        <td class="rowLabel">PAR</td>
+        ${pars.map(p=>`<td>${p}</td>`).join("")}
+        <td class="sumCol">${sumPar}</td>
+      </tr>
+      <tr>
+        <td class="rowLabel">打数</td>
+        ${strokesArr.map(s=>`<td>${s ? s : ""}</td>`).join("")}
+        <td class="sumCol">${sumStrokes ? sumStrokes : ""}</td>
+      </tr>
+      <tr>
+        <td class="rowLabel">±PAR</td>
+        ${diffs.map(d=>`<td>${diffText(d)}</td>`).join("")}
+        <td class="sumCol">${diffText(sumDiff)}</td>
+      </tr>
+    </table>
+  `;
+}
+
 function showHoleOut(){
   playCupInSfx();
 
@@ -1404,30 +1515,22 @@ function showHoleOut(){
   const diff = stroke - h.par;
   const label = scoreLabel(diff);
 
-  // 合計（ここまで）
-  const totalSt = totalStrokesUpTo(holeIndex);
-  const totalPar = totalParUpTo(holeIndex);
-  const totalDiff = totalSt - totalPar;
-  const totalLabel = scoreLabel(totalDiff);
-
   const box = document.getElementById("holeOutBanner");
   const title = document.getElementById("holeOutTitle");
   const t = document.getElementById("holeOutText");
+  const wrap = document.getElementById("scoreTableWrap");
 
-  if(holeIndex < HOLES.length - 1){
-    title.textContent = `HOLE ${h.no} OUT!`;
-    t.textContent =
-      `Hole ${h.no}: ${stroke} / Par${h.par} → ${label}\n` +
-      `Total(${h.no}H): ${totalSt} / Par${totalPar} → ${totalLabel}`;
-    document.getElementById("nextHoleBtn").textContent = "次ホール";
-  }else{
-    // 3H終了
-    title.textContent = `FINISH! (1H〜3H)`;
-    t.textContent =
-      `Hole ${h.no}: ${stroke} / Par${h.par} → ${label}\n\n` +
-      `TOTAL(3H): ${totalSt} / Par${totalPar} → ${totalLabel}\n` +
-      `内訳: 1H ${holeStrokes[0]} / 2H ${holeStrokes[1]} / 3H ${holeStrokes[2]}`;
+  title.textContent = `HOLE ${h.no} OUT!`;
+  t.textContent = `Hole ${h.no}: ${stroke} / Par${h.par} → ${label}`;
+
+  // ★スコア表を差し込む（毎回更新）
+  wrap.innerHTML = buildScoreTableHTML();
+
+  // 最終ホールならボタン表示だけ変える
+  if(holeIndex >= HOLES.length - 1){
     document.getElementById("nextHoleBtn").textContent = "最初から（3H）";
+  }else{
+    document.getElementById("nextHoleBtn").textContent = "次ホール";
   }
 
   box.style.display = "flex";
@@ -1440,6 +1543,9 @@ function init(){
   updateHoleInfo();
 }
 init();
+
+drawCourse();
+updateHoleInfo();
 </script>
 
 </body>
