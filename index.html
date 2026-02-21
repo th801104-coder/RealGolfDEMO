@@ -50,17 +50,14 @@ html,body{
   width:50vw;
   position:relative;
   background:#0f5f2a url("assets/course.png") center/contain no-repeat;
-
-  /* ★スワイプでブラウザのスクロール/拡大が暴れないように */
-  touch-action: pan-y;
+  touch-action: pan-y; /* 横スワイプを拾いつつ、縦スクロールは許可 */
 }
-
 #ballCanvas{
   position:absolute;
   inset:0;
 }
 
-/* ★上から：1H -> 風向 */
+/* 上から：1H -> 風 */
 #holeInfo{
   position:absolute;
   top:10px;
@@ -128,7 +125,7 @@ html,body{
   letter-spacing:.06em;
 }
 
-/* クラブ（少し下へ） */
+/* クラブ */
 .club-buttons{
   position:absolute;
   bottom:20px;
@@ -155,7 +152,6 @@ html,body{
   display:flex;
   flex-direction:column;
 }
-
 #impactZone{
   flex:1;
   background:#111;
@@ -169,7 +165,6 @@ html,body{
   height:220px;
   position:relative;
 }
-
 /* ゴルフボール */
 #ballCircle{
   width:100%;
@@ -186,7 +181,6 @@ html,body{
   border-radius:50%;
   background:rgba(0,0,0,.08);
 }
-
 /* ＋カーソル（クラブ選択後のみ表示） */
 #impactCursor{
   position:absolute;
@@ -215,7 +209,6 @@ html,body{
   top:50%;
   transform:translateY(-50%);
 }
-
 /* プレイヤー */
 #playerZone{
   flex:1;
@@ -234,26 +227,157 @@ html,body{
   transform:rotate(25deg);
 }
 
-/* ===== グリーンモード（仮） ===== */
+/* ===== GREEN MODE ===== */
 #greenOverlay{
   position:fixed;
   inset:0;
-  background:linear-gradient(#2f9e48,#177a36);
   display:none;
   z-index:200;
   color:#fff;
-  padding:16px;
 }
-#greenOverlay h2{
-  margin:0 0 10px 0;
-  font-size:22px;
+
+/* グリーン背景 */
+#greenStage{
+  position:absolute;
+  inset:0;
+  background:radial-gradient(circle at 50% 40%, rgba(70, 210, 120, 1), rgba(25, 130, 70, 1));
+  overflow:hidden;
 }
-#backToCourse{
-  padding:10px 14px;
+
+/* グリーンキャンバス */
+#greenCanvas{
+  position:absolute;
+  inset:0;
+}
+
+/* HUD */
+#greenHUD{
+  position:absolute;
+  top:12px;
+  left:12px;
+  right:12px;
+  display:flex;
+  gap:10px;
+  align-items:stretch;
+  justify-content:space-between;
+  pointer-events:none;
+}
+.hudCard{
+  background:rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  padding:10px 12px;
+  font-weight:900;
+  line-height:1.2;
+  pointer-events:none;
+}
+#greenTitle{
+  min-width:150px;
+}
+#greenInfo{
+  flex:1;
+  text-align:center;
+}
+#greenHint{
+  min-width:190px;
+  text-align:right;
+}
+
+/* 強さゲージ */
+#powerWrap{
+  position:absolute;
+  left:16px;
+  right:16px;
+  bottom:18px;
+  background:rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:14px;
+  padding:12px;
+}
+#powerRow{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+#powerLabel{
+  font-weight:900;
+  white-space:nowrap;
+}
+#powerBar{
+  position:relative;
+  height:14px;
+  flex:1;
+  background:rgba(255,255,255,.18);
+  border-radius:999px;
+  overflow:hidden;
+}
+#powerFill{
+  position:absolute;
+  left:0;
+  top:0;
+  bottom:0;
+  width:0%;
+  background:rgba(255,255,255,.75);
+}
+#powerMarker{
+  position:absolute;
+  top:-4px;
+  width:4px;
+  height:22px;
+  left:0%;
+  background:rgba(255, 215, 0, .95);
+  border-radius:999px;
+  box-shadow:0 1px 0 rgba(0,0,0,.35);
+}
+#greenButtons{
+  margin-top:10px;
+  display:flex;
+  gap:8px;
+  justify-content:flex-end;
+}
+#greenButtons button{
+  pointer-events:auto;
+  padding:10px 12px;
   border:none;
-  border-radius:10px;
-  font-weight:800;
+  border-radius:12px;
+  font-weight:900;
   cursor:pointer;
+}
+
+/* HOLE OUT */
+#holeOutBanner{
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  background:rgba(0,0,0,.55);
+}
+#holeOutBanner .inner{
+  background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:16px;
+  padding:16px 18px;
+  max-width:min(520px, 90vw);
+}
+#holeOutBanner h2{
+  margin:0 0 8px 0;
+  font-size:28px;
+  letter-spacing:.06em;
+}
+#holeOutBanner p{
+  margin:0 0 12px 0;
+  opacity:.95;
+  font-weight:800;
+}
+#holeOutBanner button{
+  padding:12px 14px;
+  border:none;
+  border-radius:12px;
+  font-weight:900;
+  cursor:pointer;
+  margin:0 6px;
 }
 </style>
 </head>
@@ -266,11 +390,41 @@ html,body{
   <button id="startBtn">START</button>
 </div>
 
-<!-- グリーンモード（仮画面） -->
+<!-- GREEN MODE -->
 <div id="greenOverlay">
-  <h2>GREEN MODE</h2>
-  <p>（次はここに傾斜ライン＋パター操作を入れます）</p>
-  <button id="backToCourse">コースに戻る</button>
+  <div id="greenStage">
+    <canvas id="greenCanvas"></canvas>
+
+    <div id="greenHUD">
+      <div class="hudCard" id="greenTitle">GREEN MODE</div>
+      <div class="hudCard" id="greenInfo">Dist: -- ft<br>Slope: --</div>
+      <div class="hudCard" id="greenHint">Swipe L/R: Aim<br>Tap: Putt</div>
+    </div>
+
+    <div id="powerWrap">
+      <div id="powerRow">
+        <div id="powerLabel">POWER</div>
+        <div id="powerBar">
+          <div id="powerFill"></div>
+          <div id="powerMarker"></div>
+        </div>
+      </div>
+      <div id="greenButtons">
+        <button id="backToCourse">コースに戻る</button>
+      </div>
+    </div>
+
+    <div id="holeOutBanner">
+      <div class="inner">
+        <h2>HOLE OUT!</h2>
+        <p id="holeOutText">Great putt!</p>
+        <div>
+          <button id="nextHoleBtn">次ホール（簡易）</button>
+          <button id="stayBtn">コースに戻る</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ゲーム -->
@@ -325,13 +479,7 @@ setRealHeight();
 document.getElementById("startBtn").onclick = ()=>{
   document.getElementById("startScreen").style.display="none";
   document.getElementById("layout").style.display="flex";
-  setTimeout(()=>{ resize(); resetHole(); }, 50);
-};
-
-/* ===== グリーンモード（仮） ===== */
-const greenOverlay = document.getElementById("greenOverlay");
-document.getElementById("backToCourse").onclick = ()=>{
-  greenOverlay.style.display="none";
+  setTimeout(()=>{ resizeCourse(); resetHole(); }, 50);
 };
 
 /* ===== 右のディンプル生成 ===== */
@@ -344,51 +492,50 @@ for(let i=0;i<90;i++){
   ballCircle.appendChild(d);
 }
 
-/* ===== 左canvas ===== */
+/* =========================
+   COURSE (左)
+========================= */
 const leftEl = document.getElementById("left");
-const canvas = document.getElementById("ballCanvas");
-const ctx = canvas.getContext("2d");
+const impactZone = document.getElementById("impactZone");
+const courseCanvas = document.getElementById("ballCanvas");
+const courseCtx = courseCanvas.getContext("2d");
 
 /* ---- 風 ----
    windDirDeg: 0°=右, 90°=下, 180°=左, 270°=上（canvas座標系）
 */
-let windSpeed = 0.8 + Math.random()*2.2; // 少し強めに
+let windSpeed = 0.8 + Math.random()*2.2;
 let windDirDeg = Math.random()*360;
 
 function updateWindUI(){
   const arrow = document.getElementById("windArrow");
-  // 表示の矢印は「↑」を回転。windDirDeg は「右=0°」なので、表示を合わせて -90°補正。
-  arrow.style.transform = `rotate(${windDirDeg - 90}deg)`;
+  arrow.style.transform = `rotate(${windDirDeg - 90}deg)`; // ↑を回す
   document.getElementById("windSpeedText").textContent = `${windSpeed.toFixed(1)}m`;
 }
 updateWindUI();
 
-/* =========================================================
-   ティー＆グリーン（だいたい）
-========================================================= */
+/* ---- ティー＆グリーン（だいたい） ---- */
 const TEE_X_RATIO   = 0.38;
 const TEE_Y_RATIO   = 0.78;
 
 const GREEN_X_RATIO = 0.33;
 const GREEN_Y_RATIO = 0.24;
-
 const GREEN_RADIUS_RATIO = 0.10;
 
 function getTeePos(){
-  return { x: canvas.width*TEE_X_RATIO, y: canvas.height*TEE_Y_RATIO };
+  return { x: courseCanvas.width*TEE_X_RATIO, y: courseCanvas.height*TEE_Y_RATIO };
 }
 function getGreenCenter(){
-  return { x: canvas.width*GREEN_X_RATIO, y: canvas.height*GREEN_Y_RATIO };
+  return { x: courseCanvas.width*GREEN_X_RATIO, y: courseCanvas.height*GREEN_Y_RATIO };
 }
 function getGreenRadius(){
-  return Math.min(canvas.width, canvas.height) * GREEN_RADIUS_RATIO;
+  return Math.min(courseCanvas.width, courseCanvas.height) * GREEN_RADIUS_RATIO;
 }
 
-/* ---- 距離表示 ---- */
+/* ---- 距離 ---- */
 const HOLE_YARDS = 360;
 function remainingYards(){
   const g = getGreenCenter();
-  const d = Math.hypot(ball.x - g.x, ball.y - g.y);
+  const d = Math.hypot(courseBall.x - g.x, courseBall.y - g.y);
 
   const tee = getTeePos();
   const base = Math.hypot(tee.x - g.x, tee.y - g.y) || 1;
@@ -413,15 +560,11 @@ function updateHoleInfo(){
     `1H Par4<br>Rest${y} ${nextStrokeWord()}`;
 }
 
-/* ===== スワイプでエイム（矢印） =====
-   aimLevel: -2,-1,0,1,2
-*/
+/* ---- スワイプでエイム（-2..+2） ---- */
 let aimLevel = 0;
 const AIM_MIN = -2;
 const AIM_MAX =  2;
 const AIM_STEP_DEG = 7;
-
-// スワイプ感度（px）。小さいほど反応が早い
 const SWIPE_STEP_PX = 40;
 
 let swipeActive = false;
@@ -431,7 +574,7 @@ let swipeAccumX = 0;
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
 leftEl.addEventListener("pointerdown", (e)=>{
-  // クラブボタン等のUI操作は邪魔しない
+  if(inGreenMode) return;
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
 
@@ -442,19 +585,19 @@ leftEl.addEventListener("pointerdown", (e)=>{
 });
 
 leftEl.addEventListener("pointermove", (e)=>{
+  if(inGreenMode) return;
   if(!swipeActive) return;
-  if(isBallMoving) return;
+  if(isCourseBallMoving) return;
 
   const dx = e.clientX - swipeStartX;
   const delta = dx - swipeAccumX;
 
-  // 一定距離ごとに aimLevel を1段変える
   if(Math.abs(delta) >= SWIPE_STEP_PX){
     const steps = Math.trunc(delta / SWIPE_STEP_PX);
     swipeAccumX += steps * SWIPE_STEP_PX;
 
     aimLevel = clamp(aimLevel + steps, AIM_MIN, AIM_MAX);
-    draw();
+    drawCourse();
   }
 });
 
@@ -468,37 +611,36 @@ function endSwipe(e){
 leftEl.addEventListener("pointerup", endSwipe);
 leftEl.addEventListener("pointercancel", endSwipe);
 
-/* ---- 状態 ---- */
+/* ---- コース状態 ---- */
 let stroke = 0;
 let clubPower = 0;
-let ball = { x: 0, y: 0 };
-let velocity = { x: 0, y: 0 };
-let isBallMoving = false;
+
+let courseBall = { x: 0, y: 0 };
+let courseVel  = { x: 0, y: 0 };
+let isCourseBallMoving = false;
 
 let phase = "idle";
 let cursorY = 0;
 let cursorX = 0;
 let direction = 1;
 
-/* ショットは「飛行フレーム数」だけ動いて着地即停止 */
 let flightFrame = 0;
 let flightFramesTotal = 0;
 
-/* ===== canvasサイズ ===== */
-function resize(){
-  canvas.width = canvas.parentElement.clientWidth;
-  canvas.height = canvas.parentElement.clientHeight;
+function resizeCourse(){
+  courseCanvas.width = courseCanvas.parentElement.clientWidth;
+  courseCanvas.height = courseCanvas.parentElement.clientHeight;
 }
-window.addEventListener("resize", ()=>{ resize(); draw(); });
-resize();
+window.addEventListener("resize", ()=>{ resizeCourse(); drawCourse(); });
+resizeCourse();
 
-/* ===== リセット ===== */
+/* ---- リセット ---- */
 function resetHole(){
   stroke = 0;
   clubPower = 0;
   phase = "idle";
-  isBallMoving = false;
-  velocity.x = velocity.y = 0;
+  isCourseBallMoving = false;
+  courseVel.x = courseVel.y = 0;
 
   flightFrame = 0;
   flightFramesTotal = 0;
@@ -506,16 +648,16 @@ function resetHole(){
   aimLevel = 0;
 
   const tee = getTeePos();
-  ball.x = tee.x;
-  ball.y = tee.y;
+  courseBall.x = tee.x;
+  courseBall.y = tee.y;
 
   document.getElementById("impactCursor").style.display = "none";
   updateHoleInfo();
-  draw();
+  drawCourse();
 }
 
-/* ===== 矢印描画 ===== */
-function drawArrow(fromX, fromY, angleRad, length){
+/* ---- 描画：矢印/ボール/グリーン円 ---- */
+function drawArrow(ctx, fromX, fromY, angleRad, length){
   const toX = fromX + Math.cos(angleRad) * length;
   const toY = fromY + Math.sin(angleRad) * length;
 
@@ -552,108 +694,109 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.restore();
 }
 
-/* ★矢印は常にグリーン中心を向く（＋スワイプで左右微調整） */
-function getAimAngleRad(){
+function getCourseAimAngleRad(){
   const g = getGreenCenter();
-  const dx = g.x - ball.x;
-  const dy = g.y - ball.y;
+  const dx = g.x - courseBall.x;
+  const dy = g.y - courseBall.y;
   const baseAngle = Math.atan2(dy, dx);
   const offset = (aimLevel * AIM_STEP_DEG) * Math.PI / 180;
   return baseAngle + offset;
 }
 
-/* グリーン円（赤）可視化 */
-function drawGreenGuide(){
+function drawGreenGuideCourse(){
   const g = getGreenCenter();
   const r = getGreenRadius();
 
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,0,0,.95)";
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(g.x, g.y, r, 0, Math.PI*2);
-  ctx.stroke();
+  courseCtx.save();
+  courseCtx.strokeStyle = "rgba(255,0,0,.95)";
+  courseCtx.lineWidth = 3;
+  courseCtx.beginPath();
+  courseCtx.arc(g.x, g.y, r, 0, Math.PI*2);
+  courseCtx.stroke();
 
-  ctx.fillStyle = "rgba(255,0,0,.95)";
-  ctx.beginPath();
-  ctx.arc(g.x, g.y, 3, 0, Math.PI*2);
-  ctx.fill();
-
-  ctx.restore();
+  courseCtx.fillStyle = "rgba(255,0,0,.95)";
+  courseCtx.beginPath();
+  courseCtx.arc(g.x, g.y, 3, 0, Math.PI*2);
+  courseCtx.fill();
+  courseCtx.restore();
 }
 
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+function drawCourse(){
+  courseCtx.clearRect(0,0,courseCanvas.width,courseCanvas.height);
 
-  drawGreenGuide();
+  // グリーン赤円
+  drawGreenGuideCourse();
 
-  const aimAngle = getAimAngleRad();
-  ctx.save();
-  if(isBallMoving) ctx.globalAlpha = 0.35;
-  drawArrow(ball.x, ball.y, aimAngle, Math.min(canvas.width, canvas.height) * 0.18);
-  ctx.restore();
+  // エイム矢印
+  const aimAngle = getCourseAimAngleRad();
+  courseCtx.save();
+  if(isCourseBallMoving) courseCtx.globalAlpha = 0.35;
+  drawArrow(courseCtx, courseBall.x, courseBall.y, aimAngle, Math.min(courseCanvas.width, courseCanvas.height) * 0.18);
+  courseCtx.restore();
 
-  ctx.fillStyle="white";
-  ctx.beginPath();
-  ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
-  ctx.fill();
+  // ボール
+  courseCtx.fillStyle="white";
+  courseCtx.beginPath();
+  courseCtx.arc(courseBall.x, courseBall.y, 6, 0, Math.PI*2);
+  courseCtx.fill();
 
-  ctx.fillStyle="rgba(0,0,0,.55)";
-  ctx.font="12px sans-serif";
-  ctx.fillText(`Stroke: ${stroke}`, 10, canvas.height-10);
+  // Stroke（デバッグ）
+  courseCtx.fillStyle="rgba(0,0,0,.55)";
+  courseCtx.font="12px sans-serif";
+  courseCtx.fillText(`Stroke: ${stroke}`, 10, courseCanvas.height-10);
 }
 
-/* ===== ボール移動：着地したら即停止（風はx/y両方） ===== */
-function animate(){
-  if(isBallMoving){
-    ball.x += velocity.x;
-    ball.y += velocity.y;
+/* ---- コース移動：着地即停止＋風(x/y) ---- */
+function animateCourse(){
+  if(isCourseBallMoving){
+    courseBall.x += courseVel.x;
+    courseBall.y += courseVel.y;
 
-    // ★風を本格化：向きに応じて x/y へドリフト
     const rad = windDirDeg * Math.PI / 180;
-    // 係数（調整ポイント）：風の効き。強すぎたら下げる
     const WIND_SCALE = 0.22;
-    ball.x += Math.cos(rad) * windSpeed * WIND_SCALE;
-    ball.y += Math.sin(rad) * windSpeed * WIND_SCALE;
+    courseBall.x += Math.cos(rad) * windSpeed * WIND_SCALE;
+    courseBall.y += Math.sin(rad) * windSpeed * WIND_SCALE;
 
     flightFrame++;
 
     if(flightFrame >= flightFramesTotal){
-      isBallMoving = false;
-      velocity.x = 0;
-      velocity.y = 0;
+      isCourseBallMoving = false;
+      courseVel.x = 0;
+      courseVel.y = 0;
 
-      if(isOnGreen()){
-        showNiceOnAndSwitch();
+      if(isOnGreenCourse()){
+        showNiceOnAndSwitchToGreen();
       }
     }
   }
 
   updateHoleInfo();
-  draw();
-  requestAnimationFrame(animate);
+  drawCourse();
+  requestAnimationFrame(animateCourse);
 }
-animate();
+animateCourse();
 
-function isOnGreen(){
+function isOnGreenCourse(){
   const g = getGreenCenter();
   const r = getGreenRadius();
-  return Math.hypot(ball.x - g.x, ball.y - g.y) <= r;
+  return Math.hypot(courseBall.x - g.x, courseBall.y - g.y) <= r;
 }
 
-function showNiceOnAndSwitch(){
+function showNiceOnAndSwitchToGreen(){
   const banner = document.getElementById("banner");
   banner.style.display = "block";
 
   setTimeout(()=>{
     banner.style.display = "none";
-    greenOverlay.style.display = "block";
-  }, 1000);
+    enterGreenMode();
+  }, 800);
 }
 
-/* ===== クラブ ===== */
+/* ---- クラブ ---- */
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
+    if(inGreenMode) return;
+
     document.querySelectorAll(".club-buttons button")
       .forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
@@ -672,7 +815,7 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
   };
 });
 
-/* ===== カーソル移動 ===== */
+/* ---- カーソル移動 ---- */
 function moveCursor(){
   const cursor = document.getElementById("impactCursor");
 
@@ -694,28 +837,29 @@ function moveCursor(){
 }
 moveCursor();
 
-/* ===== タップ順 ===== */
-document.getElementById("impactZone").addEventListener("click",()=>{
+/* ---- タップ順 ---- */
+impactZone.addEventListener("click",()=>{
+  if(inGreenMode) return;
   if(clubPower<=0) return;
-  if(isBallMoving) return;
+  if(isCourseBallMoving) return;
 
   if(phase==="vertical"){
     phase="horizontal";
     direction=1;
   }else if(phase==="horizontal"){
     phase="done";
-    swingAndShot();
+    swingAndShotCourse();
   }
 });
 
-function swingAndShot(){
+function swingAndShotCourse(){
   const golfer=document.getElementById("golferImg");
   golfer.classList.add("swing");
   setTimeout(()=>golfer.classList.remove("swing"),300);
 
   stroke += 1;
 
-  const aimAngle = getAimAngleRad();
+  const aimAngle = getCourseAimAngleRad();
   const nx = Math.cos(aimAngle);
   const ny = Math.sin(aimAngle);
 
@@ -727,13 +871,13 @@ function swingAndShot(){
   const px = -ny;
   const py = nx;
 
-  velocity.x = nx * speed * forwardScale + px * speed * sideScale;
-  velocity.y = ny * speed * forwardScale + py * speed * sideScale;
+  courseVel.x = nx * speed * forwardScale + px * speed * sideScale;
+  courseVel.y = ny * speed * forwardScale + py * speed * sideScale;
 
   flightFrame = 0;
   flightFramesTotal = Math.round(30 + speed * 3.2);
 
-  isBallMoving = true;
+  isCourseBallMoving = true;
 
   setTimeout(()=>{
     phase="idle";
@@ -741,6 +885,363 @@ function swingAndShot(){
     cursorX=0; cursorY=0;
   }, 650);
 }
+
+/* =========================
+   GREEN MODE
+========================= */
+const greenOverlay = document.getElementById("greenOverlay");
+const greenCanvas = document.getElementById("greenCanvas");
+const gctx = greenCanvas.getContext("2d");
+
+let inGreenMode = false;
+
+/* グリーン座標 */
+let gBall = { x: 0, y: 0 };
+let gVel  = { x: 0, y: 0 };
+let gCup  = { x: 0, y: 0, r: 12 };
+
+let gSlope = { ax: 0, ay: 0 }; // 傾斜加速度（毎フレーム加算）
+let gAimAngle = -Math.PI/2;    // 上向き基準（-90°）
+let gAimLevel = 0;             // スワイプで角度を変える
+let gMoving = false;
+
+let powerT = 0;                // 0..1
+let powerDir = 1;              // 往復
+let powerSpeed = 0.018;        // 往復スピード
+
+let gSwipeActive = false;
+let gSwipeStartX = 0;
+let gSwipeAccumX = 0;
+const G_SWIPE_STEP_PX = 35;
+const G_AIM_STEP_DEG = 7;
+const G_AIM_MIN = -6;
+const G_AIM_MAX =  6;
+
+function resizeGreen(){
+  greenCanvas.width = window.innerWidth;
+  greenCanvas.height = window.innerHeight;
+}
+window.addEventListener("resize", ()=>{ resizeGreen(); drawGreen(); });
+resizeGreen();
+
+/* コース上の「グリーン中心からのズレ」を、グリーン画面の初期球位置に反映（雰囲気） */
+function courseToGreenStart(){
+  const gc = getGreenCenter();
+  const r = getGreenRadius() || 1;
+
+  // コースでの相対位置（-1..1 くらい）
+  const rx = (courseBall.x - gc.x) / r;
+  const ry = (courseBall.y - gc.y) / r;
+
+  // グリーン画面では、中心よりやや下を基準に配置
+  const cx = greenCanvas.width * 0.5;
+  const cy = greenCanvas.height * 0.58;
+
+  // 相対ズレを少しだけ反映（強すぎない）
+  return {
+    x: cx + rx * 40,
+    y: cy + ry * 40
+  };
+}
+
+function randomizeCupAndSlope(){
+  // カップ：画面中央よりちょい上周辺
+  const cx = greenCanvas.width * 0.5;
+  const cy = greenCanvas.height * 0.42;
+
+  const jitterX = (Math.random()*2 - 1) * 70;
+  const jitterY = (Math.random()*2 - 1) * 40;
+
+  gCup.x = cx + jitterX;
+  gCup.y = cy + jitterY;
+  gCup.r = 13;
+
+  // 傾斜：方向ランダム、強さもほどほど
+  const dir = Math.random()*Math.PI*2;
+  const strength = 0.018 + Math.random()*0.020; // 調整ポイント（強すぎたら下げる）
+  gSlope.ax = Math.cos(dir) * strength;
+  gSlope.ay = Math.sin(dir) * strength;
+}
+
+function updateGreenHUD(){
+  const dx = gCup.x - gBall.x;
+  const dy = gCup.y - gBall.y;
+  const distPx = Math.hypot(dx, dy);
+
+  // 雰囲気でft換算（適当）：px→ft
+  const ft = Math.max(1, Math.round(distPx / 28));
+
+  // 傾斜表示（矢印っぽい文字）
+  const slopeAngle = Math.atan2(gSlope.ay, gSlope.ax);
+  const deg = Math.round((slopeAngle * 180/Math.PI + 360) % 360);
+  document.getElementById("greenInfo").innerHTML =
+    `Dist: ${ft} ft<br>Slope: ${deg}°`;
+}
+
+function setPowerUI(){
+  const fill = document.getElementById("powerFill");
+  const marker = document.getElementById("powerMarker");
+
+  const pct = Math.round(powerT * 100);
+  fill.style.width = pct + "%";
+  marker.style.left = `calc(${pct}% - 2px)`;
+}
+
+/* 方向：左右スワイプで調整（-6..+6） */
+function clampInt(v, min, max){ return Math.max(min, Math.min(max, v|0)); }
+
+greenOverlay.addEventListener("pointerdown", (e)=>{
+  if(!inGreenMode) return;
+
+  // ボタン操作は除外
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+  if(tag === "button") return;
+
+  // 既に転がっているなら、タップで止めたりしない（次の入力待ち）
+  gSwipeActive = true;
+  gSwipeStartX = e.clientX;
+  gSwipeAccumX = 0;
+  greenOverlay.setPointerCapture?.(e.pointerId);
+});
+
+greenOverlay.addEventListener("pointermove", (e)=>{
+  if(!inGreenMode) return;
+  if(!gSwipeActive) return;
+  if(gMoving) return;
+
+  const dx = e.clientX - gSwipeStartX;
+  const delta = dx - gSwipeAccumX;
+
+  if(Math.abs(delta) >= G_SWIPE_STEP_PX){
+    const steps = Math.trunc(delta / G_SWIPE_STEP_PX);
+    gSwipeAccumX += steps * G_SWIPE_STEP_PX;
+
+    gAimLevel = clampInt(gAimLevel + steps, G_AIM_MIN, G_AIM_MAX);
+    drawGreen();
+  }
+});
+
+function endGreenSwipe(e){
+  if(!gSwipeActive) return;
+  gSwipeActive = false;
+  gSwipeStartX = 0;
+  gSwipeAccumX = 0;
+  greenOverlay.releasePointerCapture?.(e.pointerId);
+}
+greenOverlay.addEventListener("pointerup", endGreenSwipe);
+greenOverlay.addEventListener("pointercancel", endGreenSwipe);
+
+/* タップでパット（強さゲージ確定） */
+greenOverlay.addEventListener("click", (e)=>{
+  if(!inGreenMode) return;
+
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+  if(tag === "button") return;
+
+  if(gMoving) return; // 転がり中は打てない
+  puttNow();
+});
+
+function enterGreenMode(){
+  inGreenMode = true;
+  greenOverlay.style.display = "block";
+  document.getElementById("holeOutBanner").style.display = "none";
+
+  // 初期配置
+  const start = courseToGreenStart();
+  gBall.x = start.x;
+  gBall.y = start.y;
+  gVel.x = 0; gVel.y = 0;
+  gMoving = false;
+
+  // 初期方向
+  gAimLevel = 0;
+  gAimAngle = -Math.PI/2;
+
+  // パワー往復
+  powerT = 0.15;
+  powerDir = 1;
+
+  randomizeCupAndSlope();
+  updateGreenHUD();
+  setPowerUI();
+  drawGreen();
+}
+
+document.getElementById("backToCourse").onclick = ()=>{
+  inGreenMode = false;
+  greenOverlay.style.display = "none";
+};
+
+document.getElementById("stayBtn").onclick = ()=>{
+  inGreenMode = false;
+  greenOverlay.style.display = "none";
+};
+
+document.getElementById("nextHoleBtn").onclick = ()=>{
+  // 簡易：次ホールとしてコースをリセット
+  inGreenMode = false;
+  greenOverlay.style.display = "none";
+
+  // 風も少し変える
+  windSpeed = 0.8 + Math.random()*2.2;
+  windDirDeg = Math.random()*360;
+  updateWindUI();
+
+  resetHole();
+};
+
+function getGreenAimAngle(){
+  // まっすぐ上向き(-90°)を基準に左右回転
+  const offset = (gAimLevel * G_AIM_STEP_DEG) * Math.PI / 180;
+  return -Math.PI/2 + offset;
+}
+
+function puttNow(){
+  // パワーをスピードへ（調整ポイント）
+  const base = 7.0; // これを上げると強くなる
+  const speed = base * (0.20 + powerT * 0.80);
+
+  const a = getGreenAimAngle();
+  gVel.x = Math.cos(a) * speed;
+  gVel.y = Math.sin(a) * speed;
+
+  gMoving = true;
+}
+
+function drawGreen(){
+  gctx.clearRect(0,0,greenCanvas.width,greenCanvas.height);
+
+  // 傾斜ライン（薄い線）
+  // 傾斜方向に流れる感じを描く
+  const cx = greenCanvas.width*0.5;
+  const cy = greenCanvas.height*0.5;
+  const a = Math.atan2(gSlope.ay, gSlope.ax);
+
+  gctx.save();
+  gctx.globalAlpha = 0.22;
+  gctx.strokeStyle = "white";
+  gctx.lineWidth = 2;
+
+  // 斜めストライプを数本
+  for(let i=-6;i<=6;i++){
+    const off = i*50;
+    const x1 = cx + Math.cos(a + Math.PI/2)*off - Math.cos(a)*800;
+    const y1 = cy + Math.sin(a + Math.PI/2)*off - Math.sin(a)*800;
+    const x2 = cx + Math.cos(a + Math.PI/2)*off + Math.cos(a)*800;
+    const y2 = cy + Math.sin(a + Math.PI/2)*off + Math.sin(a)*800;
+
+    gctx.beginPath();
+    gctx.moveTo(x1,y1);
+    gctx.lineTo(x2,y2);
+    gctx.stroke();
+  }
+  gctx.restore();
+
+  // カップ
+  gctx.save();
+  gctx.fillStyle = "rgba(0,0,0,.55)";
+  gctx.beginPath();
+  gctx.arc(gCup.x, gCup.y, gCup.r, 0, Math.PI*2);
+  gctx.fill();
+
+  // カップ縁
+  gctx.strokeStyle = "rgba(255,255,255,.35)";
+  gctx.lineWidth = 2;
+  gctx.beginPath();
+  gctx.arc(gCup.x, gCup.y, gCup.r, 0, Math.PI*2);
+  gctx.stroke();
+  gctx.restore();
+
+  // エイム矢印（ボール→方向）
+  if(!gMoving){
+    const ang = getGreenAimAngle();
+    const len = 90;
+
+    // 矢印
+    drawArrow(gctx, gBall.x, gBall.y, ang, len);
+  }
+
+  // ボール
+  gctx.fillStyle = "white";
+  gctx.beginPath();
+  gctx.arc(gBall.x, gBall.y, 9, 0, Math.PI*2);
+  gctx.fill();
+
+  // ボール影
+  gctx.fillStyle = "rgba(0,0,0,.25)";
+  gctx.beginPath();
+  gctx.ellipse(gBall.x+2, gBall.y+10, 10, 5, 0, 0, Math.PI*2);
+  gctx.fill();
+
+  updateGreenHUD();
+}
+
+/* グリーン物理（傾斜＋摩擦） */
+function animateGreen(){
+  if(inGreenMode){
+    // パワーゲージ往復（転がり中でも動く＝見てて楽しい）
+    powerT += powerDir * powerSpeed;
+    if(powerT >= 1){ powerT = 1; powerDir = -1; }
+    if(powerT <= 0){ powerT = 0; powerDir =  1; }
+    setPowerUI();
+
+    if(gMoving){
+      // 傾斜による加速
+      gVel.x += gSlope.ax;
+      gVel.y += gSlope.ay;
+
+      // 位置更新
+      gBall.x += gVel.x;
+      gBall.y += gVel.y;
+
+      // 摩擦（調整ポイント）
+      const FRICTION = 0.975;
+      gVel.x *= FRICTION;
+      gVel.y *= FRICTION;
+
+      // 画面外に出ない（壁で止める）
+      const pad = 18;
+      if(gBall.x < pad){ gBall.x = pad; gVel.x *= -0.25; }
+      if(gBall.x > greenCanvas.width - pad){ gBall.x = greenCanvas.width - pad; gVel.x *= -0.25; }
+      if(gBall.y < pad){ gBall.y = pad; gVel.y *= -0.25; }
+      if(gBall.y > greenCanvas.height - pad){ gBall.y = greenCanvas.height - pad; gVel.y *= -0.25; }
+
+      // カップ判定（近い＆遅い）
+      const d = Math.hypot(gBall.x - gCup.x, gBall.y - gCup.y);
+      const sp = Math.hypot(gVel.x, gVel.y);
+
+      if(d <= gCup.r*0.92 && sp < 1.6){
+        // 入った
+        gMoving = false;
+        gVel.x = 0; gVel.y = 0;
+        showHoleOut();
+      }
+
+      // 完全停止
+      if(sp < 0.18){
+        gMoving = false;
+        gVel.x = 0; gVel.y = 0;
+      }
+    }
+
+    drawGreen();
+  }
+
+  requestAnimationFrame(animateGreen);
+}
+animateGreen();
+
+function showHoleOut(){
+  const box = document.getElementById("holeOutBanner");
+  const t = document.getElementById("holeOutText");
+  t.textContent = `Strokes: ${stroke}  +  Putt!`;
+  box.style.display = "flex";
+}
+
+/* ====== 初回描画 ====== */
+drawCourse();
+updateHoleInfo();
 </script>
 
 </body>
