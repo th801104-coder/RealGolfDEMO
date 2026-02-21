@@ -50,7 +50,7 @@ html,body{
   width:50vw;
   position:relative;
   background:#0f5f2a url("assets/course.png") center/contain no-repeat;
-  touch-action: pan-y; /* 横スワイプを拾いつつ、縦スクロールは許可 */
+  touch-action: pan-y;
 }
 #ballCanvas{
   position:absolute;
@@ -100,9 +100,7 @@ html,body{
   transform-origin:center;
   filter: drop-shadow(0 1px 0 rgba(0,0,0,.6));
 }
-#windSpeedText{
-  font-weight:900;
-}
+#windSpeedText{ font-weight:900; }
 
 /* NiceON表示 */
 #banner{
@@ -142,9 +140,7 @@ html,body{
   font-weight:bold;
   font-size:14px;
 }
-.club-buttons button.active{
-  outline:3px solid gold;
-}
+.club-buttons button.active{ outline:3px solid gold; }
 
 /* ===== 右 ===== */
 #right{
@@ -165,7 +161,6 @@ html,body{
   height:220px;
   position:relative;
 }
-/* ゴルフボール */
 #ballCircle{
   width:100%;
   height:100%;
@@ -181,7 +176,6 @@ html,body{
   border-radius:50%;
   background:rgba(0,0,0,.08);
 }
-/* ＋カーソル（クラブ選択後のみ表示） */
 #impactCursor{
   position:absolute;
   width:40px;
@@ -209,7 +203,6 @@ html,body{
   top:50%;
   transform:translateY(-50%);
 }
-/* プレイヤー */
 #playerZone{
   flex:1;
   background:linear-gradient(#2b8f44,#1f8f3a);
@@ -223,9 +216,7 @@ html,body{
   object-fit:contain;
   transition:transform .3s;
 }
-.swing{
-  transform:rotate(25deg);
-}
+.swing{ transform:rotate(25deg); }
 
 /* ===== GREEN MODE ===== */
 #greenOverlay{
@@ -235,16 +226,12 @@ html,body{
   z-index:200;
   color:#fff;
 }
-
-/* グリーン背景 */
 #greenStage{
   position:absolute;
   inset:0;
   background:radial-gradient(circle at 50% 40%, rgba(70, 210, 120, 1), rgba(25, 130, 70, 1));
   overflow:hidden;
 }
-
-/* グリーンキャンバス */
 #greenCanvas{
   position:absolute;
   inset:0;
@@ -271,17 +258,9 @@ html,body{
   line-height:1.2;
   pointer-events:none;
 }
-#greenTitle{
-  min-width:150px;
-}
-#greenInfo{
-  flex:1;
-  text-align:center;
-}
-#greenHint{
-  min-width:190px;
-  text-align:right;
-}
+#greenTitle{ min-width:150px; }
+#greenInfo{ flex:1; text-align:center; }
+#greenHint{ min-width:190px; text-align:right; }
 
 /* 強さゲージ */
 #powerWrap{
@@ -299,10 +278,7 @@ html,body{
   align-items:center;
   gap:12px;
 }
-#powerLabel{
-  font-weight:900;
-  white-space:nowrap;
-}
+#powerLabel{ font-weight:900; white-space:nowrap; }
 #powerBar{
   position:relative;
   height:14px;
@@ -313,9 +289,7 @@ html,body{
 }
 #powerFill{
   position:absolute;
-  left:0;
-  top:0;
-  bottom:0;
+  left:0; top:0; bottom:0;
   width:0%;
   background:rgba(255,255,255,.75);
 }
@@ -429,7 +403,6 @@ html,body{
 
 <!-- ゲーム -->
 <div id="layout" style="display:none;">
-
   <div id="left">
     <canvas id="ballCanvas"></canvas>
 
@@ -464,14 +437,11 @@ html,body{
       <img id="golferImg" src="assets/golfer.png" alt="golfer">
     </div>
   </div>
-
 </div>
 
 <script>
 /* ===== iPhone Safariの100vh問題対策 ===== */
-function setRealHeight(){
-  document.body.style.height = window.innerHeight + "px";
-}
+function setRealHeight(){ document.body.style.height = window.innerHeight + "px"; }
 window.addEventListener("resize", setRealHeight);
 setRealHeight();
 
@@ -500,15 +470,13 @@ const impactZone = document.getElementById("impactZone");
 const courseCanvas = document.getElementById("ballCanvas");
 const courseCtx = courseCanvas.getContext("2d");
 
-/* ---- 風 ----
-   windDirDeg: 0°=右, 90°=下, 180°=左, 270°=上（canvas座標系）
-*/
+/* ---- 風 ---- */
 let windSpeed = 0.8 + Math.random()*2.2;
 let windDirDeg = Math.random()*360;
 
 function updateWindUI(){
   const arrow = document.getElementById("windArrow");
-  arrow.style.transform = `rotate(${windDirDeg - 90}deg)`; // ↑を回す
+  arrow.style.transform = `rotate(${windDirDeg - 90}deg)`;
   document.getElementById("windSpeedText").textContent = `${windSpeed.toFixed(1)}m`;
 }
 updateWindUI();
@@ -539,7 +507,6 @@ function remainingYards(){
 
   const tee = getTeePos();
   const base = Math.hypot(tee.x - g.x, tee.y - g.y) || 1;
-
   return Math.max(0, Math.round((d / base) * HOLE_YARDS));
 }
 
@@ -724,23 +691,19 @@ function drawGreenGuideCourse(){
 function drawCourse(){
   courseCtx.clearRect(0,0,courseCanvas.width,courseCanvas.height);
 
-  // グリーン赤円
   drawGreenGuideCourse();
 
-  // エイム矢印
   const aimAngle = getCourseAimAngleRad();
   courseCtx.save();
   if(isCourseBallMoving) courseCtx.globalAlpha = 0.35;
   drawArrow(courseCtx, courseBall.x, courseBall.y, aimAngle, Math.min(courseCanvas.width, courseCanvas.height) * 0.18);
   courseCtx.restore();
 
-  // ボール
   courseCtx.fillStyle="white";
   courseCtx.beginPath();
   courseCtx.arc(courseBall.x, courseBall.y, 6, 0, Math.PI*2);
   courseCtx.fill();
 
-  // Stroke（デバッグ）
   courseCtx.fillStyle="rgba(0,0,0,.55)";
   courseCtx.font="12px sans-serif";
   courseCtx.fillText(`Stroke: ${stroke}`, 10, courseCanvas.height-10);
@@ -785,7 +748,6 @@ function isOnGreenCourse(){
 function showNiceOnAndSwitchToGreen(){
   const banner = document.getElementById("banner");
   banner.style.display = "block";
-
   setTimeout(()=>{
     banner.style.display = "none";
     enterGreenMode();
@@ -797,8 +759,7 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
     if(inGreenMode) return;
 
-    document.querySelectorAll(".club-buttons button")
-      .forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".club-buttons button").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
 
     clubPower = Number(btn.dataset.power);
@@ -887,13 +848,29 @@ function swingAndShotCourse(){
 }
 
 /* =========================
-   GREEN MODE（楕円＋音＋止まる物理＋矢印は常にカップ方向）
+   GREEN MODE（楕円＋音＋止まる物理＋スコア表示）
 ========================= */
 const greenOverlay = document.getElementById("greenOverlay");
 const greenCanvas = document.getElementById("greenCanvas");
 const gctx = greenCanvas.getContext("2d");
 
 let inGreenMode = false;
+
+/* ===== スコア設定（このホール固定） ===== */
+const HOLE_NO = 1;
+const HOLE_PAR = 4; // ★Par4前提
+
+function scoreLabel(diff){
+  // diff = strokes - par
+  if(diff <= -3) return "ALBATROSS";
+  if(diff === -2) return "EAGLE";
+  if(diff === -1) return "BIRDIE";
+  if(diff ===  0) return "PAR";
+  if(diff ===  1) return "BOGEY";
+  if(diff ===  2) return "DOUBLE BOGEY";
+  if(diff ===  3) return "TRIPLE BOGEY";
+  return `+${diff}`;
+}
 
 /* ===== 効果音（外部ファイルなし / WebAudio） ===== */
 let sfxCtx = null;
@@ -904,7 +881,6 @@ function getSfxCtx(){
   if(sfxCtx.state === "suspended") sfxCtx.resume().catch(()=>{});
   return sfxCtx;
 }
-// 「コツっ」
 function playTapSfx(){
   const ctx = getSfxCtx();
   const t0 = ctx.currentTime;
@@ -920,7 +896,6 @@ function playTapSfx(){
   o1.start(t0);
   o1.stop(t0 + 0.06);
 }
-// 「カラン」
 function playCupInSfx(){
   const ctx = getSfxCtx();
   const t0 = ctx.currentTime;
@@ -952,7 +927,6 @@ function insideEllipse(x,y,e){
   const dy = (y - e.cy) / e.ry;
   return (dx*dx + dy*dy) <= 1;
 }
-/* 楕円外に出たら境界へ戻し、法線反射で軽く跳ね返す */
 function resolveEllipseCollision(ball, vel, e){
   const dx = ball.x - e.cx;
   const dy = ball.y - e.cy;
@@ -960,23 +934,19 @@ function resolveEllipseCollision(ball, vel, e){
   const val = (dx*dx)/(e.rx*e.rx) + (dy*dy)/(e.ry*e.ry);
   if(val <= 1) return;
 
-  // 境界へ投影
   const t = 1 / Math.sqrt(val);
   ball.x = e.cx + dx * t;
   ball.y = e.cy + dy * t;
 
-  // 法線（x/rx^2, y/ry^2）
   let nx = dx / (e.rx*e.rx);
   let ny = dy / (e.ry*e.ry);
   const nlen = Math.hypot(nx, ny) || 1;
   nx /= nlen; ny /= nlen;
 
-  // 反射 v' = v - 2(v·n)n
   const dot = vel.x*nx + vel.y*ny;
   vel.x = vel.x - 2*dot*nx;
   vel.y = vel.y - 2*dot*ny;
 
-  // 減衰
   vel.x *= 0.25;
   vel.y *= 0.25;
 }
@@ -986,8 +956,8 @@ let gBall = { x: 0, y: 0 };
 let gVel  = { x: 0, y: 0 };
 let gCup  = { x: 0, y: 0, r: 12 };
 
-let gSlope = { ax: 0, ay: 0 }; // 傾斜加速度（毎フレーム加算）
-let gAimLevel = 0;             // スワイプで角度を変える
+let gSlope = { ax: 0, ay: 0 };
+let gAimLevel = 0;
 let gMoving = false;
 
 // ★矢印の基準角度（常にカップ方向）
@@ -996,9 +966,9 @@ function updateAimBaseToCup(){
   gAimBaseAngle = Math.atan2(gCup.y - gBall.y, gCup.x - gBall.x);
 }
 
-let powerT = 0;                // 0..1
-let powerDir = 1;              // 往復
-let powerSpeed = 0.018;        // 往復スピード
+let powerT = 0;
+let powerDir = 1;
+let powerSpeed = 0.018;
 
 let gSwipeActive = false;
 let gSwipeStartX = 0;
@@ -1015,7 +985,6 @@ function resizeGreen(){
 window.addEventListener("resize", ()=>{ resizeGreen(); drawGreen(); });
 resizeGreen();
 
-/* コース上の「グリーン中心からのズレ」を、楕円グリーン基準の初期球位置に反映 */
 function courseToGreenStart(){
   const e = getGreenEllipse();
 
@@ -1025,11 +994,9 @@ function courseToGreenStart(){
   const rx = (courseBall.x - gc.x) / r;
   const ry = (courseBall.y - gc.y) / r;
 
-  // 楕円の下側に寄せる
   let x = e.cx + rx * 55;
   let y = e.cy + e.ry * 0.45 + ry * 35;
 
-  // 楕円外なら内側へ
   if(!insideEllipse(x,y,e)){
     const dx = x - e.cx, dy = y - e.cy;
     const val = (dx*dx)/(e.rx*e.rx) + (dy*dy)/(e.ry*e.ry);
@@ -1043,7 +1010,6 @@ function courseToGreenStart(){
 function randomizeCupAndSlope(){
   const e = getGreenEllipse();
 
-  // カップ：楕円の上側に収める
   let placed = false;
   for(let i=0;i<80;i++){
     const x = e.cx + (Math.random()*2-1) * e.rx * 0.55;
@@ -1061,45 +1027,42 @@ function randomizeCupAndSlope(){
   }
   gCup.r = 13;
 
-  // 傾斜（★弱め：止まりやすい）
   const dir = Math.random()*Math.PI*2;
   const strength = 0.0022 + Math.random()*0.0012;
   gSlope.ax = Math.cos(dir) * strength;
   gSlope.ay = Math.sin(dir) * strength;
 }
 
+/* ★GREEN HUDに「打数」も表示 */
 function updateGreenHUD(){
   const dx = gCup.x - gBall.x;
   const dy = gCup.y - gBall.y;
   const distPx = Math.hypot(dx, dy);
 
-  // 雰囲気でft換算
   const ft = Math.max(1, Math.round(distPx / 28));
 
   const slopeAngle = Math.atan2(gSlope.ay, gSlope.ax);
   const deg = Math.round((slopeAngle * 180/Math.PI + 360) % 360);
+
+  // ★ストローク表示（グリーン中も表示）
   document.getElementById("greenInfo").innerHTML =
-    `Dist: ${ft} ft<br>Slope: ${deg}°`;
+    `Hole ${HOLE_NO} Par${HOLE_PAR}<br>Strokes: ${stroke}<br>Dist: ${ft} ft / Slope: ${deg}°`;
 }
 
 function setPowerUI(){
   const fill = document.getElementById("powerFill");
   const marker = document.getElementById("powerMarker");
-
   const pct = Math.round(powerT * 100);
   fill.style.width = pct + "%";
   marker.style.left = `calc(${pct}% - 2px)`;
 }
 
-/* 方向：左右スワイプで調整（-6..+6） */
 function clampInt(v, min, max){ return Math.max(min, Math.min(max, v|0)); }
 
 greenOverlay.addEventListener("pointerdown", (e)=>{
   if(!inGreenMode) return;
-
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
-
   gSwipeActive = true;
   gSwipeStartX = e.clientX;
   gSwipeAccumX = 0;
@@ -1133,13 +1096,10 @@ function endGreenSwipe(e){
 greenOverlay.addEventListener("pointerup", endGreenSwipe);
 greenOverlay.addEventListener("pointercancel", endGreenSwipe);
 
-/* タップでパット（強さゲージ確定） */
 greenOverlay.addEventListener("click", (e)=>{
   if(!inGreenMode) return;
-
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
-
   if(gMoving) return;
   puttNow();
 });
@@ -1156,13 +1116,10 @@ function enterGreenMode(){
   gMoving = false;
 
   gAimLevel = 0;
-
   powerT = 0.15;
   powerDir = 1;
 
   randomizeCupAndSlope();
-
-  // ★初期矢印をカップ方向へ
   updateAimBaseToCup();
   gAimLevel = 0;
 
@@ -1175,12 +1132,10 @@ document.getElementById("backToCourse").onclick = ()=>{
   inGreenMode = false;
   greenOverlay.style.display = "none";
 };
-
 document.getElementById("stayBtn").onclick = ()=>{
   inGreenMode = false;
   greenOverlay.style.display = "none";
 };
-
 document.getElementById("nextHoleBtn").onclick = ()=>{
   inGreenMode = false;
   greenOverlay.style.display = "none";
@@ -1188,17 +1143,19 @@ document.getElementById("nextHoleBtn").onclick = ()=>{
   windSpeed = 0.8 + Math.random()*2.2;
   windDirDeg = Math.random()*360;
   updateWindUI();
-
   resetHole();
 };
 
 function getGreenAimAngle(){
   const offset = (gAimLevel * G_AIM_STEP_DEG) * Math.PI / 180;
-  return gAimBaseAngle + offset; // ★常にカップ方向ベース
+  return gAimBaseAngle + offset;
 }
 
 function puttNow(){
-  playTapSfx(); // ★打音「コツっ」
+  playTapSfx();
+
+  // ★パットも打数加算（グリーンに入ってからの打数を計上）
+  stroke += 1;
 
   const base = 7.0;
   const speed = base * (0.20 + powerT * 0.80);
@@ -1210,18 +1167,17 @@ function puttNow(){
   gMoving = true;
 }
 
-/* ★楕円グリーン描画：外側は真っ黒でチラつき無し */
 function drawGreen(){
   const w = greenCanvas.width, h = greenCanvas.height;
   gctx.clearRect(0,0,w,h);
 
   const e = getGreenEllipse();
 
-  // ★背景は真っ黒
+  // 背景は真っ黒
   gctx.fillStyle = "black";
   gctx.fillRect(0,0,w,h);
 
-  // ---- フリンジ（外縁） ----
+  // フリンジ
   gctx.save();
   gctx.fillStyle = "rgba(22,120,70,1)";
   gctx.globalAlpha = 0.95;
@@ -1230,7 +1186,7 @@ function drawGreen(){
   gctx.fill();
   gctx.restore();
 
-  // ---- グリーン本体（ラジアルグラデ） ----
+  // グリーン本体
   const grad = gctx.createRadialGradient(
     e.cx - e.rx*0.25, e.cy - e.ry*0.25, 20,
     e.cx, e.cy, Math.max(e.rx,e.ry)*1.05
@@ -1242,7 +1198,7 @@ function drawGreen(){
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
   gctx.fill();
 
-  // ---- 楕円内にクリップして、傾斜ライン等を描く ----
+  // 楕円内クリップ
   gctx.save();
   gctx.beginPath();
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
@@ -1283,7 +1239,7 @@ function drawGreen(){
   gctx.stroke();
   gctx.restore();
 
-  // エイム矢印（静止中のみ）
+  // 矢印（静止中のみ）
   if(!gMoving){
     const ang = getGreenAimAngle();
     drawArrow(gctx, gBall.x, gBall.y, ang, 90);
@@ -1306,30 +1262,25 @@ function drawGreen(){
   updateGreenHUD();
 }
 
-/* グリーン物理（傾斜＋摩擦＋転がり抵抗で必ず止まる＋楕円境界） */
+/* グリーン物理 */
 function animateGreen(){
   if(inGreenMode){
-    // パワーゲージ往復
     powerT += powerDir * powerSpeed;
     if(powerT >= 1){ powerT = 1; powerDir = -1; }
     if(powerT <= 0){ powerT = 0; powerDir =  1; }
     setPowerUI();
 
     if(gMoving){
-      // 傾斜加速
       gVel.x += gSlope.ax;
       gVel.y += gSlope.ay;
 
-      // 位置更新
       gBall.x += gVel.x;
       gBall.y += gVel.y;
 
-      // 摩擦（少し強め）
       const FRICTION = 0.962;
       gVel.x *= FRICTION;
       gVel.y *= FRICTION;
 
-      // ★転がり抵抗（一定量減速）→必ず止まる
       let sp = Math.hypot(gVel.x, gVel.y);
       if(sp > 0.0001){
         const ROLL_RESIST = 0.028;
@@ -1339,32 +1290,23 @@ function animateGreen(){
         gVel.y -= ry;
       }
 
-      // 楕円境界反射
       const e = getGreenEllipse();
       resolveEllipseCollision(gBall, gVel, e);
 
-      // 再計算
       sp = Math.hypot(gVel.x, gVel.y);
 
-      // カップ判定（近い＆遅い）
       const d = Math.hypot(gBall.x - gCup.x, gBall.y - gCup.y);
       if(d <= gCup.r*0.92 && sp < 1.6){
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
-
-        // ★止まったら矢印をカップ方向へ
         updateAimBaseToCup();
         gAimLevel = 0;
-
         showHoleOut();
       }
 
-      // 完全停止
       if(sp < 0.22){
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
-
-        // ★止まったら矢印をカップ方向へ
         updateAimBaseToCup();
         gAimLevel = 0;
       }
@@ -1378,11 +1320,15 @@ function animateGreen(){
 animateGreen();
 
 function showHoleOut(){
-  playCupInSfx(); // ★カップ音「カラン」
+  playCupInSfx();
+
+  const total = stroke;                 // ★合計打数
+  const diff = total - HOLE_PAR;        // ★Parとの差
+  const label = scoreLabel(diff);       // ★Birdie / Par / Bogey...
 
   const box = document.getElementById("holeOutBanner");
   const t = document.getElementById("holeOutText");
-  t.textContent = `Strokes: ${stroke}  +  Putt!`;
+  t.textContent = `Total: ${total} / Par${HOLE_PAR}  →  ${label}`;
   box.style.display = "flex";
 }
 
