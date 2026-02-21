@@ -887,13 +887,100 @@ function swingAndShotCourse(){
 }
 
 /* =========================
-   GREEN MODE
+   GREEN MODE（ここだけリアル楕円＋効果音）
 ========================= */
 const greenOverlay = document.getElementById("greenOverlay");
 const greenCanvas = document.getElementById("greenCanvas");
 const gctx = greenCanvas.getContext("2d");
 
 let inGreenMode = false;
+
+/* ===== 効果音（外部ファイルなし / WebAudio） ===== */
+let sfxCtx = null;
+function getSfxCtx(){
+  if(!sfxCtx){
+    sfxCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(sfxCtx.state === "suspended") sfxCtx.resume().catch(()=>{});
+  return sfxCtx;
+}
+// 「コツっ」
+function playTapSfx(){
+  const ctx = getSfxCtx();
+  const t0 = ctx.currentTime;
+
+  const o1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  o1.type = "square";
+  o1.frequency.setValueAtTime(240, t0);
+  o1.frequency.exponentialRampToValueAtTime(120, t0 + 0.03);
+  g1.gain.setValueAtTime(0.12, t0);
+  g1.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05);
+  o1.connect(g1).connect(ctx.destination);
+  o1.start(t0);
+  o1.stop(t0 + 0.06);
+}
+// 「カラン」
+function playCupInSfx(){
+  const ctx = getSfxCtx();
+  const t0 = ctx.currentTime;
+
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = "triangle";
+  o.frequency.setValueAtTime(950, t0);
+  o.frequency.setValueAtTime(720, t0 + 0.06);
+
+  g.gain.setValueAtTime(0.10, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+
+  o.connect(g).connect(ctx.destination);
+  o.start(t0);
+  o.stop(t0 + 0.36);
+}
+
+/* ===== 楕円グリーン定義 ===== */
+function getGreenEllipse(){
+  // 画面に対する比率（好みで微調整OK）
+  const cx = greenCanvas.width  * 0.50;
+  const cy = greenCanvas.height * 0.54;
+  const rx = greenCanvas.width  * 0.44;
+  const ry = greenCanvas.height * 0.30;
+  return { cx, cy, rx, ry };
+}
+function insideEllipse(x,y,e){
+  const dx = (x - e.cx) / e.rx;
+  const dy = (y - e.cy) / e.ry;
+  return (dx*dx + dy*dy) <= 1;
+}
+/* 楕円外に出たら境界へ戻し、法線反射で軽く跳ね返す */
+function resolveEllipseCollision(ball, vel, e){
+  const dx = ball.x - e.cx;
+  const dy = ball.y - e.cy;
+
+  const val = (dx*dx)/(e.rx*e.rx) + (dy*dy)/(e.ry*e.ry);
+  if(val <= 1) return;
+
+  // 境界へ投影
+  const t = 1 / Math.sqrt(val);
+  ball.x = e.cx + dx * t;
+  ball.y = e.cy + dy * t;
+
+  // 法線（x/rx^2, y/ry^2）
+  let nx = dx / (e.rx*e.rx);
+  let ny = dy / (e.ry*e.ry);
+  const nlen = Math.hypot(nx, ny) || 1;
+  nx /= nlen; ny /= nlen;
+
+  // 反射 v' = v - 2(v·n)n
+  const dot = vel.x*nx + vel.y*ny;
+  vel.x = vel.x - 2*dot*nx;
+  vel.y = vel.y - 2*dot*ny;
+
+  // 減衰
+  vel.x *= 0.25;
+  vel.y *= 0.25;
+}
 
 /* グリーン座標 */
 let gBall = { x: 0, y: 0 };
@@ -924,41 +1011,55 @@ function resizeGreen(){
 window.addEventListener("resize", ()=>{ resizeGreen(); drawGreen(); });
 resizeGreen();
 
-/* コース上の「グリーン中心からのズレ」を、グリーン画面の初期球位置に反映（雰囲気） */
+/* コース上の「グリーン中心からのズレ」を、楕円グリーン基準の初期球位置に反映 */
 function courseToGreenStart(){
-  const gc = getGreenCenter();
-  const r = getGreenRadius() || 1;
+  const e = getGreenEllipse();
 
-  // コースでの相対位置（-1..1 くらい）
+  const gc = getGreenCenter();
+  const r  = getGreenRadius() || 1;
+
   const rx = (courseBall.x - gc.x) / r;
   const ry = (courseBall.y - gc.y) / r;
 
-  // グリーン画面では、中心よりやや下を基準に配置
-  const cx = greenCanvas.width * 0.5;
-  const cy = greenCanvas.height * 0.58;
+  // 楕円の下側に寄せる（リアルっぽく）
+  let x = e.cx + rx * 55;
+  let y = e.cy + e.ry * 0.45 + ry * 35;
 
-  // 相対ズレを少しだけ反映（強すぎない）
-  return {
-    x: cx + rx * 40,
-    y: cy + ry * 40
-  };
+  // 楕円外なら内側へ押し戻す
+  if(!insideEllipse(x,y,e)){
+    const dx = x - e.cx, dy = y - e.cy;
+    const val = (dx*dx)/(e.rx*e.rx) + (dy*dy)/(e.ry*e.ry);
+    const t = 0.98 / Math.sqrt(val);
+    x = e.cx + dx*t;
+    y = e.cy + dy*t;
+  }
+  return { x, y };
 }
 
 function randomizeCupAndSlope(){
-  // カップ：画面中央よりちょい上周辺
-  const cx = greenCanvas.width * 0.5;
-  const cy = greenCanvas.height * 0.42;
+  const e = getGreenEllipse();
 
-  const jitterX = (Math.random()*2 - 1) * 70;
-  const jitterY = (Math.random()*2 - 1) * 40;
-
-  gCup.x = cx + jitterX;
-  gCup.y = cy + jitterY;
+  // カップ：楕円の上側に収める
+  let placed = false;
+  for(let i=0;i<80;i++){
+    const x = e.cx + (Math.random()*2-1) * e.rx * 0.55;
+    const y = e.cy - e.ry*0.35 + (Math.random()*2-1) * e.ry * 0.30;
+    if(insideEllipse(x,y,e)){
+      gCup.x = x;
+      gCup.y = y;
+      placed = true;
+      break;
+    }
+  }
+  if(!placed){
+    gCup.x = e.cx;
+    gCup.y = e.cy - e.ry*0.28;
+  }
   gCup.r = 13;
 
-  // 傾斜：方向ランダム、強さもほどほど
+  // 傾斜
   const dir = Math.random()*Math.PI*2;
-  const strength = 0.006 + Math.random()*0.002; // 調整ポイント（強すぎたら下げる）
+  const strength = 0.006 + Math.random()*0.002;
   gSlope.ax = Math.cos(dir) * strength;
   gSlope.ay = Math.sin(dir) * strength;
 }
@@ -971,7 +1072,6 @@ function updateGreenHUD(){
   // 雰囲気でft換算（適当）：px→ft
   const ft = Math.max(1, Math.round(distPx / 28));
 
-  // 傾斜表示（矢印っぽい文字）
   const slopeAngle = Math.atan2(gSlope.ay, gSlope.ax);
   const deg = Math.round((slopeAngle * 180/Math.PI + 360) % 360);
   document.getElementById("greenInfo").innerHTML =
@@ -993,11 +1093,9 @@ function clampInt(v, min, max){ return Math.max(min, Math.min(max, v|0)); }
 greenOverlay.addEventListener("pointerdown", (e)=>{
   if(!inGreenMode) return;
 
-  // ボタン操作は除外
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
 
-  // 既に転がっているなら、タップで止めたりしない（次の入力待ち）
   gSwipeActive = true;
   gSwipeStartX = e.clientX;
   gSwipeAccumX = 0;
@@ -1038,7 +1136,7 @@ greenOverlay.addEventListener("click", (e)=>{
   const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
   if(tag === "button") return;
 
-  if(gMoving) return; // 転がり中は打てない
+  if(gMoving) return;
   puttNow();
 });
 
@@ -1047,18 +1145,15 @@ function enterGreenMode(){
   greenOverlay.style.display = "block";
   document.getElementById("holeOutBanner").style.display = "none";
 
-  // 初期配置
   const start = courseToGreenStart();
   gBall.x = start.x;
   gBall.y = start.y;
   gVel.x = 0; gVel.y = 0;
   gMoving = false;
 
-  // 初期方向
   gAimLevel = 0;
   gAimAngle = -Math.PI/2;
 
-  // パワー往復
   powerT = 0.15;
   powerDir = 1;
 
@@ -1079,11 +1174,9 @@ document.getElementById("stayBtn").onclick = ()=>{
 };
 
 document.getElementById("nextHoleBtn").onclick = ()=>{
-  // 簡易：次ホールとしてコースをリセット
   inGreenMode = false;
   greenOverlay.style.display = "none";
 
-  // 風も少し変える
   windSpeed = 0.8 + Math.random()*2.2;
   windDirDeg = Math.random()*360;
   updateWindUI();
@@ -1092,14 +1185,14 @@ document.getElementById("nextHoleBtn").onclick = ()=>{
 };
 
 function getGreenAimAngle(){
-  // まっすぐ上向き(-90°)を基準に左右回転
   const offset = (gAimLevel * G_AIM_STEP_DEG) * Math.PI / 180;
   return -Math.PI/2 + offset;
 }
 
 function puttNow(){
-  // パワーをスピードへ（調整ポイント）
-  const base = 7.0; // これを上げると強くなる
+  playTapSfx(); // ★打音「コツっ」
+
+  const base = 7.0;
   const speed = base * (0.20 + powerT * 0.80);
 
   const a = getGreenAimAngle();
@@ -1109,27 +1202,74 @@ function puttNow(){
   gMoving = true;
 }
 
+/* ★楕円グリーン描画（リアル寄り） */
 function drawGreen(){
-  gctx.clearRect(0,0,greenCanvas.width,greenCanvas.height);
+  const w = greenCanvas.width, h = greenCanvas.height;
+  gctx.clearRect(0,0,w,h);
 
-  // 傾斜ライン（薄い線）
-  // 傾斜方向に流れる感じを描く
-  const cx = greenCanvas.width*0.5;
-  const cy = greenCanvas.height*0.5;
-  const a = Math.atan2(gSlope.ay, gSlope.ax);
+  const e = getGreenEllipse();
 
+  // ---- 背景（外周ラフ） ----
+  const bg = gctx.createLinearGradient(0,0,0,h);
+  bg.addColorStop(0, "rgba(12,50,26,1)");
+  bg.addColorStop(1, "rgba(6,26,14,1)");
+  gctx.fillStyle = bg;
+  gctx.fillRect(0,0,w,h);
+
+  // ラフっぽい粒テクスチャ（軽め）
   gctx.save();
-  gctx.globalAlpha = 0.22;
+  gctx.globalAlpha = 0.10;
+  gctx.fillStyle = "white";
+  for(let i=0;i<240;i++){
+    const x = Math.random()*w;
+    const y = Math.random()*h;
+    const r = 1 + Math.random()*2.2;
+    gctx.beginPath();
+    gctx.arc(x,y,r,0,Math.PI*2);
+    gctx.fill();
+  }
+  gctx.restore();
+
+  // ---- フリンジ（外縁） ----
+  gctx.save();
+  gctx.fillStyle = "rgba(22,120,70,1)";
+  gctx.globalAlpha = 0.95;
+  gctx.beginPath();
+  gctx.ellipse(e.cx, e.cy, e.rx*1.04, e.ry*1.04, 0, 0, Math.PI*2);
+  gctx.fill();
+  gctx.restore();
+
+  // ---- グリーン本体（ラジアルグラデ） ----
+  const grad = gctx.createRadialGradient(
+    e.cx - e.rx*0.25, e.cy - e.ry*0.25, 20,
+    e.cx, e.cy, Math.max(e.rx,e.ry)*1.05
+  );
+  grad.addColorStop(0, "rgba(80,220,140,1)");
+  grad.addColorStop(1, "rgba(25,140,85,1)");
+  gctx.fillStyle = grad;
+  gctx.beginPath();
+  gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
+  gctx.fill();
+
+  // ---- ここから楕円内にクリップして、傾斜ライン等を描く ----
+  gctx.save();
+  gctx.beginPath();
+  gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
+  gctx.clip();
+
+  // 傾斜ライン
+  const cx = w*0.5, cy = h*0.5;
+  const a = Math.atan2(gSlope.ay, gSlope.ax);
+  gctx.save();
+  gctx.globalAlpha = 0.18;
   gctx.strokeStyle = "white";
   gctx.lineWidth = 2;
-
-  // 斜めストライプを数本
   for(let i=-6;i<=6;i++){
     const off = i*50;
-    const x1 = cx + Math.cos(a + Math.PI/2)*off - Math.cos(a)*800;
-    const y1 = cy + Math.sin(a + Math.PI/2)*off - Math.sin(a)*800;
-    const x2 = cx + Math.cos(a + Math.PI/2)*off + Math.cos(a)*800;
-    const y2 = cy + Math.sin(a + Math.PI/2)*off + Math.sin(a)*800;
+    const x1 = cx + Math.cos(a + Math.PI/2)*off - Math.cos(a)*900;
+    const y1 = cy + Math.sin(a + Math.PI/2)*off - Math.sin(a)*900;
+    const x2 = cx + Math.cos(a + Math.PI/2)*off + Math.cos(a)*900;
+    const y2 = cy + Math.sin(a + Math.PI/2)*off + Math.sin(a)*900;
 
     gctx.beginPath();
     gctx.moveTo(x1,y1);
@@ -1145,7 +1285,6 @@ function drawGreen(){
   gctx.arc(gCup.x, gCup.y, gCup.r, 0, Math.PI*2);
   gctx.fill();
 
-  // カップ縁
   gctx.strokeStyle = "rgba(255,255,255,.35)";
   gctx.lineWidth = 2;
   gctx.beginPath();
@@ -1153,13 +1292,10 @@ function drawGreen(){
   gctx.stroke();
   gctx.restore();
 
-  // エイム矢印（ボール→方向）
+  // エイム矢印（静止中のみ）
   if(!gMoving){
     const ang = getGreenAimAngle();
-    const len = 90;
-
-    // 矢印
-    drawArrow(gctx, gBall.x, gBall.y, ang, len);
+    drawArrow(gctx, gBall.x, gBall.y, ang, 90);
   }
 
   // ボール
@@ -1168,26 +1304,28 @@ function drawGreen(){
   gctx.arc(gBall.x, gBall.y, 9, 0, Math.PI*2);
   gctx.fill();
 
-  // ボール影
+  // 影
   gctx.fillStyle = "rgba(0,0,0,.25)";
   gctx.beginPath();
   gctx.ellipse(gBall.x+2, gBall.y+10, 10, 5, 0, 0, Math.PI*2);
   gctx.fill();
 
+  gctx.restore(); // clip解除
+
   updateGreenHUD();
 }
 
-/* グリーン物理（傾斜＋摩擦） */
+/* グリーン物理（傾斜＋摩擦＋楕円境界） */
 function animateGreen(){
   if(inGreenMode){
-    // パワーゲージ往復（転がり中でも動く＝見てて楽しい）
+    // パワーゲージ往復
     powerT += powerDir * powerSpeed;
     if(powerT >= 1){ powerT = 1; powerDir = -1; }
     if(powerT <= 0){ powerT = 0; powerDir =  1; }
     setPowerUI();
 
     if(gMoving){
-      // 傾斜による加速
+      // 傾斜加速
       gVel.x += gSlope.ax;
       gVel.y += gSlope.ay;
 
@@ -1195,24 +1333,20 @@ function animateGreen(){
       gBall.x += gVel.x;
       gBall.y += gVel.y;
 
-      // 摩擦（調整ポイント）
+      // 摩擦
       const FRICTION = 0.975;
       gVel.x *= FRICTION;
       gVel.y *= FRICTION;
 
-      // 画面外に出ない（壁で止める）
-      const pad = 18;
-      if(gBall.x < pad){ gBall.x = pad; gVel.x *= -0.25; }
-      if(gBall.x > greenCanvas.width - pad){ gBall.x = greenCanvas.width - pad; gVel.x *= -0.25; }
-      if(gBall.y < pad){ gBall.y = pad; gVel.y *= -0.25; }
-      if(gBall.y > greenCanvas.height - pad){ gBall.y = greenCanvas.height - pad; gVel.y *= -0.25; }
+      // ★楕円境界で反射
+      const e = getGreenEllipse();
+      resolveEllipseCollision(gBall, gVel, e);
 
       // カップ判定（近い＆遅い）
       const d = Math.hypot(gBall.x - gCup.x, gBall.y - gCup.y);
       const sp = Math.hypot(gVel.x, gVel.y);
 
       if(d <= gCup.r*0.92 && sp < 1.6){
-        // 入った
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
         showHoleOut();
@@ -1233,6 +1367,8 @@ function animateGreen(){
 animateGreen();
 
 function showHoleOut(){
+  playCupInSfx(); // ★カップ音「カラン」
+
   const box = document.getElementById("holeOutBanner");
   const t = document.getElementById("holeOutText");
   t.textContent = `Strokes: ${stroke}  +  Putt!`;
