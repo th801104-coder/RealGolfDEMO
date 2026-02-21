@@ -887,7 +887,7 @@ function swingAndShotCourse(){
 }
 
 /* =========================
-   GREEN MODE（ここだけリアル楕円＋効果音）
+   GREEN MODE（楕円＋音＋止まる物理＋矢印は常にカップ方向）
 ========================= */
 const greenOverlay = document.getElementById("greenOverlay");
 const greenCanvas = document.getElementById("greenCanvas");
@@ -941,7 +941,6 @@ function playCupInSfx(){
 
 /* ===== 楕円グリーン定義 ===== */
 function getGreenEllipse(){
-  // 画面に対する比率（好みで微調整OK）
   const cx = greenCanvas.width  * 0.50;
   const cy = greenCanvas.height * 0.54;
   const rx = greenCanvas.width  * 0.44;
@@ -988,9 +987,14 @@ let gVel  = { x: 0, y: 0 };
 let gCup  = { x: 0, y: 0, r: 12 };
 
 let gSlope = { ax: 0, ay: 0 }; // 傾斜加速度（毎フレーム加算）
-let gAimAngle = -Math.PI/2;    // 上向き基準（-90°）
 let gAimLevel = 0;             // スワイプで角度を変える
 let gMoving = false;
+
+// ★矢印の基準角度（常にカップ方向）
+let gAimBaseAngle = -Math.PI/2;
+function updateAimBaseToCup(){
+  gAimBaseAngle = Math.atan2(gCup.y - gBall.y, gCup.x - gBall.x);
+}
 
 let powerT = 0;                // 0..1
 let powerDir = 1;              // 往復
@@ -1021,11 +1025,11 @@ function courseToGreenStart(){
   const rx = (courseBall.x - gc.x) / r;
   const ry = (courseBall.y - gc.y) / r;
 
-  // 楕円の下側に寄せる（リアルっぽく）
+  // 楕円の下側に寄せる
   let x = e.cx + rx * 55;
   let y = e.cy + e.ry * 0.45 + ry * 35;
 
-  // 楕円外なら内側へ押し戻す
+  // 楕円外なら内側へ
   if(!insideEllipse(x,y,e)){
     const dx = x - e.cx, dy = y - e.cy;
     const val = (dx*dx)/(e.rx*e.rx) + (dy*dy)/(e.ry*e.ry);
@@ -1057,9 +1061,9 @@ function randomizeCupAndSlope(){
   }
   gCup.r = 13;
 
-  // 傾斜
+  // 傾斜（★弱め：止まりやすい）
   const dir = Math.random()*Math.PI*2;
-  const strength = 0.006 + Math.random()*0.002;
+  const strength = 0.0022 + Math.random()*0.0012;
   gSlope.ax = Math.cos(dir) * strength;
   gSlope.ay = Math.sin(dir) * strength;
 }
@@ -1069,7 +1073,7 @@ function updateGreenHUD(){
   const dy = gCup.y - gBall.y;
   const distPx = Math.hypot(dx, dy);
 
-  // 雰囲気でft換算（適当）：px→ft
+  // 雰囲気でft換算
   const ft = Math.max(1, Math.round(distPx / 28));
 
   const slopeAngle = Math.atan2(gSlope.ay, gSlope.ax);
@@ -1152,12 +1156,16 @@ function enterGreenMode(){
   gMoving = false;
 
   gAimLevel = 0;
-  gAimAngle = -Math.PI/2;
 
   powerT = 0.15;
   powerDir = 1;
 
   randomizeCupAndSlope();
+
+  // ★初期矢印をカップ方向へ
+  updateAimBaseToCup();
+  gAimLevel = 0;
+
   updateGreenHUD();
   setPowerUI();
   drawGreen();
@@ -1186,7 +1194,7 @@ document.getElementById("nextHoleBtn").onclick = ()=>{
 
 function getGreenAimAngle(){
   const offset = (gAimLevel * G_AIM_STEP_DEG) * Math.PI / 180;
-  return -Math.PI/2 + offset;
+  return gAimBaseAngle + offset; // ★常にカップ方向ベース
 }
 
 function puttNow(){
@@ -1202,33 +1210,16 @@ function puttNow(){
   gMoving = true;
 }
 
-/* ★楕円グリーン描画（リアル寄り） */
+/* ★楕円グリーン描画：外側は真っ黒でチラつき無し */
 function drawGreen(){
   const w = greenCanvas.width, h = greenCanvas.height;
   gctx.clearRect(0,0,w,h);
 
   const e = getGreenEllipse();
 
-  // ---- 背景（外周ラフ） ----
-  const bg = gctx.createLinearGradient(0,0,0,h);
-  bg.addColorStop(0, "rgba(12,50,26,1)");
-  bg.addColorStop(1, "rgba(6,26,14,1)");
-  gctx.fillStyle = bg;
+  // ★背景は真っ黒
+  gctx.fillStyle = "black";
   gctx.fillRect(0,0,w,h);
-
-  // ラフっぽい粒テクスチャ（軽め）
-  gctx.save();
-  gctx.globalAlpha = 0.10;
-  gctx.fillStyle = "white";
-  for(let i=0;i<240;i++){
-    const x = Math.random()*w;
-    const y = Math.random()*h;
-    const r = 1 + Math.random()*2.2;
-    gctx.beginPath();
-    gctx.arc(x,y,r,0,Math.PI*2);
-    gctx.fill();
-  }
-  gctx.restore();
 
   // ---- フリンジ（外縁） ----
   gctx.save();
@@ -1251,7 +1242,7 @@ function drawGreen(){
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
   gctx.fill();
 
-  // ---- ここから楕円内にクリップして、傾斜ライン等を描く ----
+  // ---- 楕円内にクリップして、傾斜ライン等を描く ----
   gctx.save();
   gctx.beginPath();
   gctx.ellipse(e.cx, e.cy, e.rx, e.ry, 0, 0, Math.PI*2);
@@ -1315,7 +1306,7 @@ function drawGreen(){
   updateGreenHUD();
 }
 
-/* グリーン物理（傾斜＋摩擦＋楕円境界） */
+/* グリーン物理（傾斜＋摩擦＋転がり抵抗で必ず止まる＋楕円境界） */
 function animateGreen(){
   if(inGreenMode){
     // パワーゲージ往復
@@ -1333,29 +1324,49 @@ function animateGreen(){
       gBall.x += gVel.x;
       gBall.y += gVel.y;
 
-      // 摩擦
-      const FRICTION = 0.975;
+      // 摩擦（少し強め）
+      const FRICTION = 0.962;
       gVel.x *= FRICTION;
       gVel.y *= FRICTION;
 
-      // ★楕円境界で反射
+      // ★転がり抵抗（一定量減速）→必ず止まる
+      let sp = Math.hypot(gVel.x, gVel.y);
+      if(sp > 0.0001){
+        const ROLL_RESIST = 0.028;
+        const rx = (gVel.x / sp) * ROLL_RESIST;
+        const ry = (gVel.y / sp) * ROLL_RESIST;
+        gVel.x -= rx;
+        gVel.y -= ry;
+      }
+
+      // 楕円境界反射
       const e = getGreenEllipse();
       resolveEllipseCollision(gBall, gVel, e);
 
+      // 再計算
+      sp = Math.hypot(gVel.x, gVel.y);
+
       // カップ判定（近い＆遅い）
       const d = Math.hypot(gBall.x - gCup.x, gBall.y - gCup.y);
-      const sp = Math.hypot(gVel.x, gVel.y);
-
       if(d <= gCup.r*0.92 && sp < 1.6){
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
+
+        // ★止まったら矢印をカップ方向へ
+        updateAimBaseToCup();
+        gAimLevel = 0;
+
         showHoleOut();
       }
 
       // 完全停止
-      if(sp < 0.18){
+      if(sp < 0.22){
         gMoving = false;
         gVel.x = 0; gVel.y = 0;
+
+        // ★止まったら矢印をカップ方向へ
+        updateAimBaseToCup();
+        gAimLevel = 0;
       }
     }
 
