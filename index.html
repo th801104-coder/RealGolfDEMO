@@ -201,21 +201,26 @@ html,body{
   transform:translateY(-50%);
 }
 
-/* プレイヤー */
+/* プレイヤー（右下） */
 #playerZone{
   flex:1;
   background:linear-gradient(#2b8f44,#1f8f3a);
   display:flex;
   justify-content:center;
-  align-items:flex-end;
-  overflow:hidden;
+  align-items:center;     /* 下寄せ→中央寄せ（トリミングに向く） */
+  overflow:hidden;        /* はみ出したUI部分を切る */
+  position:relative;
 }
+
+/* ゴルファー画像：トリミングして見せたい部分だけ表示 */
 #golferImg{
-  height:80%;
-  width:auto;
-  object-fit:contain;
-  object-position:bottom center;
-  image-rendering:auto;
+  width:110%;             /* 少し拡大してUIを外へ追い出す */
+  height:110%;
+  max-width:none;
+  max-height:none;
+  object-fit:cover;       /* 余白を作らず、はみ出しを切る */
+  object-position:50% 55%;/* ←ここが調整ポイント（上下でUIを隠す） */
+  transform:scale(1.05);  /* さらに微調整したい時 */
 }
 
 /* ===== GREEN MODE ===== */
@@ -483,17 +488,20 @@ function playSwingAnimation(){
   let i = 0;
   golferImg.src = SWING_FRAMES[i];
 
-  // 速さ（ms） ※テンポ調整ポイント
-  const frameMs = 90;
+  // 速さ（ms） ※遅くする
+  const frameMs = 160;
 
   swingAnimTimer = setInterval(()=>{
     i++;
+
+    // ★ 5枚目で停止（最後のフレームを残す）
     if(i >= SWING_FRAMES.length){
       clearInterval(swingAnimTimer);
       swingAnimTimer = null;
-      golferImg.src = SWING_FRAMES[0];
+      golferImg.src = SWING_FRAMES[SWING_FRAMES.length - 1]; // フィニッシュ固定
       return;
     }
+
     golferImg.src = SWING_FRAMES[i];
   }, frameMs);
 }
