@@ -563,7 +563,7 @@ function holePowerScale(){
     pxPerYardRef = pxPerYard0;
   }
 
-  const scale = pxPerYardRef / pxPerYard;
+  const scale = pxPerYard / pxPerYardRef;
 
   // まずは広めに許容
   return Math.max(0.60, Math.min(1.60, scale));
