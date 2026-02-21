@@ -811,6 +811,8 @@ document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
     if(inGreenMode) return;
 
+    golferImg.src = SWING_FRAMES[0];
+
     document.querySelectorAll(".club-buttons button")
       .forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
