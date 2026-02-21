@@ -787,6 +787,7 @@ window.addEventListener("resize", ()=>{
 /* ---- リセット（ホールごと） ---- */
 function resetHole(){
   applyCourseBackground();
+  pxPerYardRef = null;   // ★ここ
 
   stroke = 0;
   clubPower = 0;
