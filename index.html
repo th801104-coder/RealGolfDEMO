@@ -569,14 +569,6 @@ function holePowerScale(){
   return Math.max(0.60, Math.min(1.60, scale));
 }
 
-  // 例：pxPerYardが大きいホールは、同じpowerだと飛びが短く感じる→scaleで増やす
-  // scale = ref / current
-  const scale = pxPerYardRef / (pxPerYard || 1e-6);
-
-  // 極端な補正で壊れないように軽く制限（好みで調整OK）
-  return Math.max(0.75, Math.min(1.35, scale));
-}
-
 let holeIndex = 0;              // 0..2
 let holeStrokes = [0,0,0];      // 各ホールの打数を保存
 
