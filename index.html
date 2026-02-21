@@ -673,10 +673,18 @@ function updateHoleInfo(){
 
   const totalSt = (holeIndex > 0) ? totalStrokesUpTo(holeIndex-1) : 0;
   const totalPar = (holeIndex > 0) ? totalParUpTo(holeIndex-1) : 0;
-  const totalLine = (holeIndex > 0) ? `\nTotal: ${totalSt} / Par${totalPar}` : "";
+  const totalLine = (holeIndex > 0)
+    ? `\nTotal: ${totalSt} / Par${totalPar}`
+    : "";
 
-  document.getElementById("holeInfo").innerText =
-    `${h.no}H Par${h.par}\nRest ${y}yd  ${nextStrokeWord()}${totalLine}`;
+  const sc = holePowerScale();
+
+  // ★ 一度 text にまとめる
+  const text =
+    `${h.no}H Par${h.par}\nRest ${y}yd  ${nextStrokeWord()}${totalLine}`
+    + `\nScale: x${sc.toFixed(2)}`;
+
+  document.getElementById("holeInfo").innerText = text;
 }
 
 /* ---- スワイプでエイム（-2..+2） ---- */
