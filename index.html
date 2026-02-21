@@ -50,6 +50,9 @@ html,body{
   width:50vw;
   position:relative;
   background:#0f5f2a url("assets/course.png") center/contain no-repeat;
+
+  /* ★スワイプでブラウザのスクロール/拡大が暴れないように */
+  touch-action: pan-y;
 }
 
 #ballCanvas{
@@ -57,7 +60,7 @@ html,body{
   inset:0;
 }
 
-/* ★順序変更：上から 1H -> 風向 */
+/* ★上から：1H -> 風向 */
 #holeInfo{
   position:absolute;
   top:10px;
@@ -73,51 +76,41 @@ html,body{
   border:1px solid rgba(255,255,255,.15);
   line-height:1.25;
 }
+
+/* 風（矢印＋風速） */
 #windInfo{
   position:absolute;
-  top:72px; /* holeInfo の下に */
+  top:72px;
   left:10px;
   background:rgba(0,0,0,.5);
   color:white;
-  padding:6px 10px;
+  padding:8px 10px;
   border-radius:8px;
   font-size:14px;
   z-index:10;
-}
-
-/* エイム（矢印）操作：風向の下へ */
-#aimControls{
-  position:absolute;
-  top:114px;
-  left:10px;
-  z-index:10;
   display:flex;
-  gap:8px;
   align-items:center;
-  background:rgba(0,0,0,.35);
-  border:1px solid rgba(255,255,255,.12);
-  color:#fff;
-  padding:8px 10px;
-  border-radius:10px;
-  backdrop-filter: blur(2px);
+  gap:8px;
 }
-#aimControls button{
-  padding:8px 10px;
-  border:none;
-  border-radius:10px;
+#windArrow{
+  width:22px;
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   font-weight:900;
-  cursor:pointer;
+  line-height:1;
+  transform-origin:center;
+  filter: drop-shadow(0 1px 0 rgba(0,0,0,.6));
 }
-#aimLabel{
+#windSpeedText{
   font-weight:900;
-  font-size:13px;
-  opacity:.95;
 }
 
 /* NiceON表示 */
 #banner{
   position:absolute;
-  top:160px;
+  top:118px;
   left:10px;
   right:10px;
   text-align:center;
@@ -135,10 +128,10 @@ html,body{
   letter-spacing:.06em;
 }
 
-/* クラブ（★少し下へ = 下端に近づけるので bottom を小さく） */
+/* クラブ（少し下へ） */
 .club-buttons{
   position:absolute;
-  bottom:20px;     /* 以前より下へ（下端に近い） */
+  bottom:20px;
   left:10px;
   display:flex;
   gap:6px;
@@ -286,14 +279,11 @@ html,body{
   <div id="left">
     <canvas id="ballCanvas"></canvas>
 
-    <!-- ★順序：1H → 風向 -->
     <div id="holeInfo">1H Par4<br>Rest360 First</div>
-    <div id="windInfo"></div>
 
-    <div id="aimControls">
-      <button id="aimLeft" aria-label="aim left">◀</button>
-      <div id="aimLabel">Aim: 0</div>
-      <button id="aimRight" aria-label="aim right">▶</button>
+    <div id="windInfo">
+      <span id="windArrow">↑</span>
+      <span id="windSpeedText">0.0m</span>
     </div>
 
     <div id="banner"><span>NiceON</span></div>
@@ -355,28 +345,32 @@ for(let i=0;i<90;i++){
 }
 
 /* ===== 左canvas ===== */
+const leftEl = document.getElementById("left");
 const canvas = document.getElementById("ballCanvas");
 const ctx = canvas.getContext("2d");
 
-/* ---- 風 ---- */
-let windSpeed = Math.random()*2;
-let windDir = Math.random()*360;
+/* ---- 風 ----
+   windDirDeg: 0°=右, 90°=下, 180°=左, 270°=上（canvas座標系）
+*/
+let windSpeed = 0.8 + Math.random()*2.2; // 少し強めに
+let windDirDeg = Math.random()*360;
 
 function updateWindUI(){
-  document.getElementById("windInfo").innerText =
-    `風向:${Math.floor(windDir)}° 風速:${windSpeed.toFixed(1)}m`;
+  const arrow = document.getElementById("windArrow");
+  // 表示の矢印は「↑」を回転。windDirDeg は「右=0°」なので、表示を合わせて -90°補正。
+  arrow.style.transform = `rotate(${windDirDeg - 90}deg)`;
+  document.getElementById("windSpeedText").textContent = `${windSpeed.toFixed(1)}m`;
 }
 updateWindUI();
 
 /* =========================================================
-   ★ティー＆グリーンの位置（だいたい）
-   - ティーを「もう少し上へ」：TEE_Y_RATIO を小さく
+   ティー＆グリーン（だいたい）
 ========================================================= */
 const TEE_X_RATIO   = 0.38;
-const TEE_Y_RATIO   = 0.78;  // ← 0.82 → 0.78 に（上へ）
+const TEE_Y_RATIO   = 0.78;
 
-const GREEN_X_RATIO = 0.34;
-const GREEN_Y_RATIO = 0.24;
+const GREEN_X_RATIO = 0.33;
+const GREEN_Y_RATIO = 0.12;
 
 const GREEN_RADIUS_RATIO = 0.10;
 
@@ -419,33 +413,60 @@ function updateHoleInfo(){
     `1H Par4<br>Rest${y} ${nextStrokeWord()}`;
 }
 
-/* ===== エイム（矢印） ===== */
+/* ===== スワイプでエイム（矢印） =====
+   aimLevel: -2,-1,0,1,2
+*/
 let aimLevel = 0;
 const AIM_MIN = -2;
 const AIM_MAX =  2;
 const AIM_STEP_DEG = 7;
 
-function updateAimUI(){
-  document.getElementById("aimLabel").textContent = `Aim: ${aimLevel}`;
-}
-updateAimUI();
+// スワイプ感度（px）。小さいほど反応が早い
+const SWIPE_STEP_PX = 40;
+
+let swipeActive = false;
+let swipeStartX = 0;
+let swipeAccumX = 0;
 
 function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
 
-document.getElementById("aimLeft").addEventListener("pointerdown", (e)=>{
-  e.preventDefault();
-  if(isBallMoving) return;
-  aimLevel = clamp(aimLevel - 1, AIM_MIN, AIM_MAX);
-  updateAimUI();
-  draw();
+leftEl.addEventListener("pointerdown", (e)=>{
+  // クラブボタン等のUI操作は邪魔しない
+  const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : "";
+  if(tag === "button") return;
+
+  swipeActive = true;
+  swipeStartX = e.clientX;
+  swipeAccumX = 0;
+  leftEl.setPointerCapture?.(e.pointerId);
 });
-document.getElementById("aimRight").addEventListener("pointerdown", (e)=>{
-  e.preventDefault();
+
+leftEl.addEventListener("pointermove", (e)=>{
+  if(!swipeActive) return;
   if(isBallMoving) return;
-  aimLevel = clamp(aimLevel + 1, AIM_MIN, AIM_MAX);
-  updateAimUI();
-  draw();
+
+  const dx = e.clientX - swipeStartX;
+  const delta = dx - swipeAccumX;
+
+  // 一定距離ごとに aimLevel を1段変える
+  if(Math.abs(delta) >= SWIPE_STEP_PX){
+    const steps = Math.trunc(delta / SWIPE_STEP_PX);
+    swipeAccumX += steps * SWIPE_STEP_PX;
+
+    aimLevel = clamp(aimLevel + steps, AIM_MIN, AIM_MAX);
+    draw();
+  }
 });
+
+function endSwipe(e){
+  if(!swipeActive) return;
+  swipeActive = false;
+  swipeStartX = 0;
+  swipeAccumX = 0;
+  leftEl.releasePointerCapture?.(e.pointerId);
+}
+leftEl.addEventListener("pointerup", endSwipe);
+leftEl.addEventListener("pointercancel", endSwipe);
 
 /* ---- 状態 ---- */
 let stroke = 0;
@@ -483,7 +504,6 @@ function resetHole(){
   flightFramesTotal = 0;
 
   aimLevel = 0;
-  updateAimUI();
 
   const tee = getTeePos();
   ball.x = tee.x;
@@ -532,7 +552,7 @@ function drawArrow(fromX, fromY, angleRad, length){
   ctx.restore();
 }
 
-/* ★矢印は常にグリーン中心を向く（＋左右微調整） */
+/* ★矢印は常にグリーン中心を向く（＋スワイプで左右微調整） */
 function getAimAngleRad(){
   const g = getGreenCenter();
   const dx = g.x - ball.x;
@@ -542,7 +562,7 @@ function getAimAngleRad(){
   return baseAngle + offset;
 }
 
-/* ★追加：グリーン円（赤）を可視化 */
+/* グリーン円（赤）可視化 */
 function drawGreenGuide(){
   const g = getGreenCenter();
   const r = getGreenRadius();
@@ -554,7 +574,6 @@ function drawGreenGuide(){
   ctx.arc(g.x, g.y, r, 0, Math.PI*2);
   ctx.stroke();
 
-  // 中心点も小さく表示（見やすさ用）
   ctx.fillStyle = "rgba(255,0,0,.95)";
   ctx.beginPath();
   ctx.arc(g.x, g.y, 3, 0, Math.PI*2);
@@ -566,39 +585,36 @@ function drawGreenGuide(){
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // ★グリーン範囲（赤円）
   drawGreenGuide();
 
-  // エイム矢印
   const aimAngle = getAimAngleRad();
   ctx.save();
   if(isBallMoving) ctx.globalAlpha = 0.35;
   drawArrow(ball.x, ball.y, aimAngle, Math.min(canvas.width, canvas.height) * 0.18);
   ctx.restore();
 
-  // ボール
   ctx.fillStyle="white";
   ctx.beginPath();
   ctx.arc(ball.x, ball.y, 6, 0, Math.PI*2);
   ctx.fill();
 
-  // デバッグ
   ctx.fillStyle="rgba(0,0,0,.55)";
   ctx.font="12px sans-serif";
   ctx.fillText(`Stroke: ${stroke}`, 10, canvas.height-10);
 }
 
-/* ===== ボール移動：着地したら即停止 ===== */
+/* ===== ボール移動：着地したら即停止（風はx/y両方） ===== */
 function animate(){
   if(isBallMoving){
     ball.x += velocity.x;
     ball.y += velocity.y;
 
-    // 風のドリフト（飛行中だけ）
-    const wx = Math.cos(windDir*Math.PI/180) * windSpeed * 0.18;
-    const wy = Math.sin(windDir*Math.PI/180) * windSpeed * 0.18;
-    ball.x += wx;
-    ball.y += wy;
+    // ★風を本格化：向きに応じて x/y へドリフト
+    const rad = windDirDeg * Math.PI / 180;
+    // 係数（調整ポイント）：風の効き。強すぎたら下げる
+    const WIND_SCALE = 0.22;
+    ball.x += Math.cos(rad) * windSpeed * WIND_SCALE;
+    ball.y += Math.sin(rad) * windSpeed * WIND_SCALE;
 
     flightFrame++;
 
@@ -619,7 +635,6 @@ function animate(){
 }
 animate();
 
-/* ★赤円の中に入ったらNiceOn */
 function isOnGreen(){
   const g = getGreenCenter();
   const r = getGreenRadius();
@@ -715,7 +730,6 @@ function swingAndShot(){
   velocity.x = nx * speed * forwardScale + px * speed * sideScale;
   velocity.y = ny * speed * forwardScale + py * speed * sideScale;
 
-  // 飛距離（必要ならここで微調整）
   flightFrame = 0;
   flightFramesTotal = Math.round(30 + speed * 3.2);
 
