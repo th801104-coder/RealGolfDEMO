@@ -161,13 +161,17 @@ html,body{
   height:220px;
   position:relative;
 }
+ /* ゴルフボール（画像版） */
 #ballCircle{
   width:100%;
   height:100%;
   border-radius:50%;
-  background:radial-gradient(circle at 30% 30%, white, #ddd);
+  background: url("assets/golfball.jpg") center/cover no-repeat;
   position:relative;
   overflow:hidden;
+  /* うっすら立体感（任意） */
+  box-shadow: inset 0 6px 16px rgba(255,255,255,.35),
+              inset 0 -10px 18px rgba(0,0,0,.25);
 }
 .dimple{
   position:absolute;
@@ -452,15 +456,7 @@ document.getElementById("startBtn").onclick = ()=>{
   setTimeout(()=>{ resizeCourse(); resetHole(); }, 50);
 };
 
-/* ===== 右のディンプル生成 ===== */
-const ballCircle = document.getElementById("ballCircle");
-for(let i=0;i<90;i++){
-  const d=document.createElement("div");
-  d.className="dimple";
-  d.style.left=Math.random()*100+"%";
-  d.style.top=Math.random()*100+"%";
-  ballCircle.appendChild(d);
-}
+
 
 /* =========================
    COURSE (左)
