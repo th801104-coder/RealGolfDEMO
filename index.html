@@ -389,6 +389,71 @@ html,body{
 .scoreTable .sumCol{
   background:rgba(255,255,255,.06);
 }
+/* ===== 操作方法ボタン（impactZone上部） ===== */
+#howtoBar{
+  position:absolute;
+  top:10px;
+  left:10px;
+  right:10px;
+  display:flex;
+  justify-content:flex-start;
+  z-index:30;
+  pointer-events:auto;
+}
+#howtoBtn{
+  background:rgba(0,0,0,.55);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+  padding:8px 12px;
+  border-radius:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+/* ===== 操作方法モーダル ===== */
+#howtoModal{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:300;
+  background:rgba(0,0,0,.55);
+  align-items:center;
+  justify-content:center;
+  padding:18px;
+}
+#howtoModal.show{ display:flex; }
+
+#howtoModal .modalPanel{
+  width:min(520px, 92vw);
+  background:rgba(0,0,0,.75);
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:16px;
+  padding:16px 16px 12px 16px;
+  color:#fff;
+  box-shadow:0 10px 30px rgba(0,0,0,.35);
+}
+#howtoModal h3{
+  margin:0 0 10px 0;
+  font-size:18px;
+  letter-spacing:.06em;
+}
+#howtoModal ol{
+  margin:0 0 12px 18px;
+  padding:0;
+  line-height:1.5;
+  font-weight:800;
+}
+#howtoModal .modalActions{
+  display:flex;
+  justify-content:flex-end;
+}
+#howtoClose{
+  padding:10px 12px;
+  border:none;
+  border-radius:12px;
+  font-weight:900;
+  cursor:pointer;
+}
 </style>
 </head>
 
@@ -469,6 +534,10 @@ html,body{
 
   <div id="right">
     <div id="impactZone">
+        <div id="howtoBar">
+    <button id="howtoBtn" type="button">操作方法</button>
+  </div>
+      
       <div id="ballUI">
         <div id="ballCircle"></div>
         <div id="impactCursor"></div>
@@ -1628,7 +1697,42 @@ init();
 
 drawCourse();
 updateHoleInfo();
+/* ===== 操作方法モーダルJS ===== */
+const howtoBtn = document.getElementById("howtoBtn");
+const howtoModal = document.getElementById("howtoModal");
+const howtoClose = document.getElementById("howtoClose");
+
+howtoBtn?.addEventListener("click", () => {
+  howtoModal.classList.add("show");
+});
+
+howtoClose?.addEventListener("click", () => {
+  howtoModal.classList.remove("show");
+});
+
+howtoModal?.addEventListener("click", (e) => {
+  if (e.target === howtoModal) {
+    howtoModal.classList.remove("show");
+  }
+});
+/* ===== ここまで追加 ===== */
 </script>
 
+<!-- 操作方法ポップアップ -->
+<div id="howtoModal" aria-hidden="true">
+  <div class="modalPanel" role="dialog" aria-modal="true" aria-labelledby="howtoTitle">
+    <h3 id="howtoTitle">操作方法</h3>
+    <ol>
+      <li>打出方向：左のコース画面をスワイプして矢印を調整</li>
+      <li>クラブ選択：クラブをタップ</li>
+      <li>ボール画面：上下 → 左右の順にタイミングよくタップ</li>
+    </ol>
+    <div class="modalActions">
+      <button id="howtoClose" type="button">閉じる</button>
+    </div>
+  </div>
+</div>
+
 </body>
+  
 </html>
