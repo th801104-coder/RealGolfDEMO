@@ -464,6 +464,62 @@ html,body{
   font-weight:900;
   cursor:pointer;
 }
+  /* ===== チュートリアル誘導 共通 ===== */
+#tutSwipe, #tutImpactTap{
+  position:absolute;
+  z-index:60;
+  display:none;
+  padding:10px 14px;
+  border-radius:999px;
+  font-weight:900;
+  background:rgba(255,255,255,.95);
+  color:#111;
+  border:2px solid rgba(0,0,0,.18);
+  box-shadow:0 10px 22px rgba(0,0,0,.25);
+  pointer-events:none;
+  line-height:1;
+  transform:translate(-50%,-120%);
+}
+
+@keyframes blink2 {
+  0%{opacity:0}
+  15%{opacity:1}
+  35%{opacity:0}
+  55%{opacity:1}
+  75%{opacity:0}
+  100%{opacity:0}
+}
+.blink2{
+  animation: blink2 1.2s ease-in-out 1;
+}
+
+/* ===== ②クラブ選択：白枠＋TAP ===== */
+#tutClubBox{
+  position:absolute;
+  z-index:60;
+  display:none;
+  left:6px;
+  right:6px;
+  bottom:10px;
+  height:118px;                 /* 2段クラブに合わせる。ズレたらここ調整 */
+  border-radius:16px;
+  border:3px solid rgba(255,255,255,.98);
+  box-shadow:0 0 0 6px rgba(255,255,255,.22), 0 14px 30px rgba(0,0,0,.25);
+  pointer-events:none;
+}
+#tutClubBox .tutTag{
+  position:absolute;
+  top:-44px;
+  left:50%;
+  transform:translateX(-50%);
+  padding:10px 14px;
+  border-radius:999px;
+  font-weight:900;
+  background:rgba(255,255,255,.95);
+  color:#111;
+  border:2px solid rgba(0,0,0,.18);
+  box-shadow:0 10px 22px rgba(0,0,0,.20);
+}
 </style>
 </head>
 
@@ -531,6 +587,13 @@ html,body{
 
     <div id="banner"><span>NiceON</span></div>
 
+    <!-- チュートリアル：①SWIPE（矢印付近） -->
+<div id="tutSwipe" aria-hidden="true">SWIPE</div>
+
+<!-- チュートリアル：②クラブ選択 TAP（白枠＋ラベル） -->
+<div id="tutClubBox" aria-hidden="true">
+  <div class="tutTag">TAP</div>
+</div>
     <div class="club-buttons">
       <button data-power="220">1W</button>
       <button data-power="190">3W</button>
@@ -548,6 +611,8 @@ html,body{
     <button id="howtoBtn" type="button">操作方法</button>
   </div>
       
+      <!-- チュートリアル：③④インパクト TAP（上下→左右） -->
+<div id="tutImpactTap" aria-hidden="true">TAP</div>
       <div id="ballUI">
         <div id="ballCircle"></div>
         <div id="impactCursor"></div>
@@ -880,9 +945,12 @@ function resetHole(){
 
   document.getElementById("impactCursor").style.display = "none";
   document.querySelectorAll(".club-buttons button").forEach(b=>b.classList.remove("active"));
-
+  
   updateHoleInfo();
   drawCourse();
+
+startTutorialIfNeeded();   // ← ★ここに追加
+  
 }
 
 /* ---- 描画：矢印/ボール/グリーン円 ---- */
@@ -1036,6 +1104,9 @@ currentClubType = btn.dataset.type === "putter" ? "putter" : "normal";
 
     const cursor = document.getElementById("impactCursor");
     cursor.style.display = "block";
+
+    onClubSelectedForTutorial();   // ← ★ここに追加
+    
     cursor.style.left = "50%";
     cursor.style.top  = "50%";
   };
@@ -1072,8 +1143,10 @@ impactZone.addEventListener("click",()=>{
   if(phase==="vertical"){
     phase="horizontal";
     direction=1;
+     onLockedVerticalForTutorial();   // ★追加（④を点滅）
   }else if(phase==="horizontal"){
     phase="done";
+     onLockedVerticalForTutorial();   // ★追加（④を点滅）
     swingAndShotCourse();
   }
 });
@@ -1736,6 +1809,96 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+  /* ===== チュートリアル誘導（①SWIPE → ②クラブTAP → ③上下TAP → ④左右TAP） ===== */
+const tutSwipeEl = document.getElementById("tutSwipe");
+const tutClubBoxEl = document.getElementById("tutClubBox");
+const tutImpactTapEl = document.getElementById("tutImpactTap");
+
+let tutStep = 0; // 0:未開始 1:SWIPE済 2:クラブ済 3:上下済 4:左右済(完)
+
+/* 2回点滅させる（確実に再発火） */
+function blink2(el){
+  if(!el) return;
+  el.style.display = "block";
+  el.classList.remove("blink2");
+  void el.offsetWidth;
+  el.classList.add("blink2");
+  setTimeout(()=>{ el.style.display = "none"; }, 1250);
+}
+
+/* ① 矢印の近くにSWIPEを出す（ボール位置ベースでOK） */
+function cueSwipe(){
+  if(!tutSwipeEl) return;
+  // 左キャンバス上のボール位置付近に置く
+  tutSwipeEl.style.left = `${courseBall.x}px`;
+  tutSwipeEl.style.top  = `${courseBall.y}px`;
+  blink2(tutSwipeEl);
+}
+
+/* ② クラブ選択枠＋TAP 2回点滅 */
+function cueClubTap(){
+  if(!tutClubBoxEl) return;
+  // 枠は出しっぱなしにせず、2回点滅
+  blink2(tutClubBoxEl);
+}
+
+/* ③④ 右上のインパクトエリアにTAPを出す（カーソル付近） */
+function cueImpactTapNearCursor(){
+  if(!tutImpactTapEl) return;
+
+  // impactZone 内座標に変換して配置（%→px）
+  const zoneRect = impactZone.getBoundingClientRect();
+  const bx = zoneRect.left;
+  const by = zoneRect.top;
+
+  // cursorX/Y は -50..+50 の%なので、中心から割合で置く
+  const cx = zoneRect.width * (0.5 + (cursorX/100));
+  const cy = zoneRect.height * (0.5 + (cursorY/100));
+
+  tutImpactTapEl.style.left = `${cx}px`;
+  tutImpactTapEl.style.top  = `${cy}px`;
+  blink2(tutImpactTapEl);
+}
+
+/* 進行開始（ホール開始時） */
+function runTutorialStart(){
+  tutStep = 1;
+  cueSwipe();
+  setTimeout(()=>{
+    tutStep = 2;
+    cueClubTap();
+  }, 1300);
+}
+
+/* ②が終わってクラブを選んだら、③へ */
+function onClubSelectedForTutorial(){
+  if(tutStep < 2) return;
+  // クラブ選択後は上下カーソルが動くフェーズになるので③
+  tutStep = 3;
+  // 少し待ってから表示（カーソル表示を待つ）
+  setTimeout(()=>{ cueImpactTapNearCursor(); }, 250);
+}
+
+/* ③（上下）をタップして横フェーズに入ったら、④へ */
+function onLockedVerticalForTutorial(){
+  if(tutStep !== 3) return;
+  tutStep = 4;
+  setTimeout(()=>{ cueImpactTapNearCursor(); }, 150);
+}
+
+/* ④（左右）をタップしてショットに入ったら終了 */
+function onLockedHorizontalForTutorial(){
+  if(tutStep !== 4) return;
+  tutStep = 5; // 完了
+}
+
+/* ===== フックポイント（既存処理に“1行だけ”追加する用） ===== */
+
+/* A) resetHole() の最後で開始（おすすめ） */
+function startTutorialIfNeeded(){
+  // 毎ホール出すならそのまま。初回だけなら localStorage 等で制御も可能
+  setTimeout(runTutorialStart, 350);
+}
 </script>
 
 <!-- 操作方法ポップアップ -->
