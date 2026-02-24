@@ -645,6 +645,12 @@ const HOLES = [
     courseImg: "assets/course1.png",
     tee:   { x: 0.38, y: 0.78 },
     green: { x: 0.33, y: 0.24, r: 0.10 }
+      // ★OB境界（黒線内側）—初期案（比率 0..1）
+    // x+:右 / y+:下
+    ob: [
+      [0.12,0.05],[0.58,0.05],[0.82,0.10],[0.90,0.22],[0.92,0.38],
+      [0.90,0.56],[0.86,0.75],[0.78,0.92],[0.62,0.97],[0.38,0.97],
+      [0.20,0.90],[0.12,0.75],[0.10,0.55],[0.10,0.30]
   },
   {
     no: 2,
@@ -653,6 +659,13 @@ const HOLES = [
     courseImg: "assets/course2.png",
     tee:   { x: 0.50, y: 0.81 },
     green: { x: 0.57, y: 0.25, r: 0.11 }
+      // ★OB境界（黒線内側）—初期案（比率 0..1）
+    // x+:右 / y+:下
+    ob: [
+      [0.12,0.05],[0.58,0.05],[0.82,0.10],[0.90,0.22],[0.92,0.38],
+      [0.90,0.56],[0.86,0.75],[0.78,0.92],[0.62,0.97],[0.38,0.97],
+      [0.20,0.90],[0.12,0.75],[0.10,0.55],[0.10,0.30]
+    ]
   },
   {
     no: 3,
@@ -661,6 +674,12 @@ const HOLES = [
     courseImg: "assets/course3.png",
     tee:   { x: 0.83, y: 0.71 },
     green: { x: 0.86, y: 0.30, r: 0.08 }
+      // ★OB境界（黒線内側）—初期案
+    ob: [
+      [0.10,0.06],[0.90,0.06],[0.92,0.18],[0.92,0.45],[0.90,0.70],
+      [0.86,0.92],[0.72,0.97],[0.45,0.97],[0.26,0.93],[0.14,0.80],
+      [0.10,0.62],[0.10,0.32]
+    ]
   }
 ];
 
@@ -1018,10 +1037,82 @@ function drawGreenGuideCourse(){
   courseCtx.restore();
 }
 
+/* ===== OB判定ユーティリティ ===== */
+
+// 点がポリゴンの内側か（ray casting）
+function pointInPoly(px, py, poly){
+  let inside = false;
+  for(let i=0, j=poly.length-1; i<poly.length; j=i++){
+    const xi = poly[i][0], yi = poly[i][1];
+    const xj = poly[j][0], yj = poly[j][1];
+    const intersect = ((yi > py) !== (yj > py)) &&
+      (px < (xj - xi) * (py - yi) / ((yj - yi) || 1e-9) + xi);
+    if(intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// 2線分の交点（あるなら {x,y,t} を返す。tはA->Bの0..1）
+function segmentIntersection(ax, ay, bx, by, cx, cy, dx, dy){
+  const rpx = bx - ax, rpy = by - ay;
+  const spx = dx - cx, spy = dy - cy;
+  const denom = rpx * spy - rpy * spx;
+  if(Math.abs(denom) < 1e-9) return null; // 平行
+
+  const qpx = cx - ax, qpy = cy - ay;
+  const t = (qpx * spy - qpy * spx) / denom;
+  const u = (qpx * rpy - qpy * rpx) / denom;
+  if(t < 0 || t > 1 || u < 0 || u > 1) return null;
+
+  return { x: ax + t * rpx, y: ay + t * rpy, t };
+}
+
+// 移動線分(prev->next)がポリゴン境界と交差した“最初の点”を返す
+function firstIntersectionWithPoly(prev, next, poly){
+  let best = null;
+  for(let i=0; i<poly.length; i++){
+    const a = poly[i];
+    const b = poly[(i+1) % poly.length];
+    const hit = segmentIntersection(prev.x, prev.y, next.x, next.y, a[0], a[1], b[0], b[1]);
+    if(hit && (best == null || hit.t < best.t)) best = hit;
+  }
+  return best;
+}
+
+// 現在ホールのOBポリゴン（canvas座標へ変換）
+function currentObPolyPx(){
+  const h = currentHole();
+  if(!h.ob || h.ob.length < 3) return null;
+  const w = courseCanvas.width, hgt = courseCanvas.height;
+  return h.ob.map(p => [p[0]*w, p[1]*hgt]);
+}
+  
 function drawCourse(){
   courseCtx.clearRect(0,0,courseCanvas.width,courseCanvas.height);
 
   drawGreenGuideCourse();
+
+  // ★OB境界（デバッグ表示）
+const obPx = currentObPolyPx();
+if(obPx){
+  courseCtx.save();
+  courseCtx.strokeStyle = "rgba(0,0,0,.85)";
+  courseCtx.lineWidth = 4;
+  courseCtx.beginPath();
+  courseCtx.moveTo(obPx[0][0], obPx[0][1]);
+  for(let i=1;i<obPx.length;i++) courseCtx.lineTo(obPx[i][0], obPx[i][1]);
+  courseCtx.closePath();
+  courseCtx.stroke();
+
+  // 点も表示（調整用）
+  courseCtx.fillStyle = "rgba(0,0,0,.85)";
+  obPx.forEach(p=>{
+    courseCtx.beginPath();
+    courseCtx.arc(p[0],p[1],4,0,Math.PI*2);
+    courseCtx.fill();
+  });
+  courseCtx.restore();
+}
 
   const aimAngle = getCourseAimAngleRad();
   courseCtx.save();
@@ -1038,29 +1129,80 @@ function drawCourse(){
 /* ---- コース移動：着地即停止＋風(x/y) ---- */
 function animateCourse(){
   if(isCourseBallMoving){
-    courseBall.x += courseVel.x;
-    courseBall.y += courseVel.y;
-      // ★スピンによる横曲がり（飛距離があるほど曲がる）
-  const currentSpeed = Math.hypot(courseVel.x, courseVel.y);
-  courseVel.x += spin * currentSpeed;
 
+    const obPx = currentObPolyPx();
+
+    // ① 前フレーム位置
+    const prev = { x: courseBall.x, y: courseBall.y };
+
+    // ② 次フレーム位置（いまの計算を“仮”で作る）
+    let nx = courseBall.x + courseVel.x;
+    let ny = courseBall.y + courseVel.y;
+
+    // 風
     const rad = windDirDeg * Math.PI / 180;
     const WIND_SCALE = 0.22;
-    courseBall.x += Math.cos(rad) * windSpeed * WIND_SCALE;
-    courseBall.y += Math.sin(rad) * windSpeed * WIND_SCALE;
+    nx += Math.cos(rad) * windSpeed * WIND_SCALE;
+    ny += Math.sin(rad) * windSpeed * WIND_SCALE;
 
-    flightFrame++;
+    // ★スピン（入れている人向け：あるならこの行もnx/ny計算に含めたい）
+    // すでに courseVel.x を更新している方式ならここは不要。
+    // 今回は「位置(nx,ny)で判定」なので現状のままでもOK。
 
-    if(flightFrame >= flightFramesTotal){
+    const next = { x: nx, y: ny };
+
+    // ③ OB判定：前が内側で次が外側になったら“境界を跨いだ”
+    if(obPx && pointInPoly(prev.x, prev.y, obPx) && !pointInPoly(next.x, next.y, obPx)){
+      const hit = firstIntersectionWithPoly(prev, next, obPx);
+
+      // 交点が取れたらそこに戻して停止
+      if(hit){
+        courseBall.x = hit.x;
+        courseBall.y = hit.y;
+      }else{
+        // 万一取れない場合は前位置へ
+        courseBall.x = prev.x;
+        courseBall.y = prev.y;
+      }
+
+      // ★OB：1打罰
+      stroke += 1;
+
+      // ボール停止
       isCourseBallMoving = false;
       courseVel.x = 0;
       courseVel.y = 0;
 
-      if(isOnGreenCourse()){
-        showNiceOnAndSwitchToGreen();
+      // 表示更新
+      updateHoleInfo();
+      drawCourse();
+
+      // （任意）OBバナー表示したければここで
+      // showTempBanner("OB  +1");
+
+    }else{
+      // ④ OBでなければ通常更新
+      courseBall.x = next.x;
+      courseBall.y = next.y;
+
+      flightFrame++;
+
+      if(flightFrame >= flightFramesTotal){
+        isCourseBallMoving = false;
+        courseVel.x = 0;
+        courseVel.y = 0;
+
+        if(isOnGreenCourse()){
+          showNiceOnAndSwitchToGreen();
+        }
       }
     }
   }
+
+  updateHoleInfo();
+  drawCourse();
+  requestAnimationFrame(animateCourse);
+}
 
   updateHoleInfo();
   drawCourse();
