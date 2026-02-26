@@ -1171,66 +1171,36 @@ function animateCourse(){
     nx += Math.cos(rad) * windSpeed * WIND_SCALE;
     ny += Math.sin(rad) * windSpeed * WIND_SCALE;
 
-    // ★スピン（入れている人向け：あるならこの行もnx/ny計算に含めたい）
-    // すでに courseVel.x を更新している方式ならここは不要。
-    // 今回は「位置(nx,ny)で判定」なので現状のままでもOK。
-
     const next = { x: nx, y: ny };
 
     // ③ OB判定：前が内側で次が外側になったら“境界を跨いだ”
     if(obPx && pointInPoly(prev.x, prev.y, obPx) && !pointInPoly(next.x, next.y, obPx)){
 
-  const hit = firstIntersectionWithPoly(prev, next, obPx);
-
-  // まずボールを境界位置へ戻す（見た目だけ）
-  if(hit){
-    courseBall.x = hit.x;
-    courseBall.y = hit.y;
-  }else{
-    courseBall.x = prev.x;
-    courseBall.y = prev.y;
-  }
-
-  // ★一旦動きを止める
-  isCourseBallMoving = false;
-  courseVel.x = 0;
-  courseVel.y = 0;
-
-  // ★OB表示（0.9秒）
-  showOBBanner();
-
-  // ★0.9秒後に1打罰を加算
-  setTimeout(()=>{
-    stroke += 1;
-    updateHoleInfo();
-  }, 900);
-}
       const hit = firstIntersectionWithPoly(prev, next, obPx);
 
-      // 交点が取れたらそこに戻して停止
+      // まずボールを境界位置へ戻す（見た目だけ）
       if(hit){
         courseBall.x = hit.x;
         courseBall.y = hit.y;
       }else{
-        // 万一取れない場合は前位置へ
         courseBall.x = prev.x;
         courseBall.y = prev.y;
       }
 
-      // ★OB：1打罰
-      stroke += 1;
-
-      // ボール停止
+      // ★一旦動きを止める
       isCourseBallMoving = false;
       courseVel.x = 0;
       courseVel.y = 0;
 
-      // 表示更新
-      updateHoleInfo();
-      drawCourse();
+      // ★OB表示（0.9秒）
+      showOBBanner();
 
-      // （任意）OBバナー表示したければここで
-      // showTempBanner("OB  +1");
+      // ★0.9秒後に1打罰を加算（バナー表示後）
+      setTimeout(()=>{
+        stroke += 1;
+        updateHoleInfo();
+        drawCourse();
+      }, 900);
 
     }else{
       // ④ OBでなければ通常更新
