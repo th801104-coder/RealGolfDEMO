@@ -123,6 +123,28 @@ html,body{
   font-weight:900;
   letter-spacing:.06em;
 }
+  /* OB表示 */
+#obBanner{
+  position:absolute;
+  top:126px;
+  left:10px;
+  right:10px;
+  text-align:center;
+  z-index:25;
+  pointer-events:none;
+  display:none;
+}
+#obBanner span{
+  display:inline-block;
+  background:rgba(0,0,0,.55);
+  color:#ff3b30;
+  padding:10px 16px;
+  border-radius:12px;
+  font-weight:900;
+  letter-spacing:.08em;
+  border:2px solid rgba(255,59,48,.75);
+  text-shadow:0 2px 10px rgba(0,0,0,.55);
+}
 
 /* クラブ */
 .club-buttons{
@@ -587,6 +609,9 @@ html,body{
 
     <div id="banner"><span>NiceON</span></div>
 
+<!-- 追加：OB表示 -->
+<div id="obBanner"><span>OB</span></div>
+    
     <!-- チュートリアル：①SWIPE（矢印付近） -->
 <div id="tutSwipe" aria-hidden="true">SWIPE</div>
 
@@ -1154,6 +1179,32 @@ function animateCourse(){
 
     // ③ OB判定：前が内側で次が外側になったら“境界を跨いだ”
     if(obPx && pointInPoly(prev.x, prev.y, obPx) && !pointInPoly(next.x, next.y, obPx)){
+
+  const hit = firstIntersectionWithPoly(prev, next, obPx);
+
+  // まずボールを境界位置へ戻す（見た目だけ）
+  if(hit){
+    courseBall.x = hit.x;
+    courseBall.y = hit.y;
+  }else{
+    courseBall.x = prev.x;
+    courseBall.y = prev.y;
+  }
+
+  // ★一旦動きを止める
+  isCourseBallMoving = false;
+  courseVel.x = 0;
+  courseVel.y = 0;
+
+  // ★OB表示（0.9秒）
+  showOBBanner();
+
+  // ★0.9秒後に1打罰を加算
+  setTimeout(()=>{
+    stroke += 1;
+    updateHoleInfo();
+  }, 900);
+}
       const hit = firstIntersectionWithPoly(prev, next, obPx);
 
       // 交点が取れたらそこに戻して停止
@@ -1221,7 +1272,13 @@ function showNiceOnAndSwitchToGreen(){
     enterGreenMode();
   }, 800);
 }
-
+function showOBBanner(){
+  const ob = document.getElementById("obBanner");
+  if(!ob) return;
+  ob.style.display = "block";
+  setTimeout(()=>{ ob.style.display = "none"; }, 900);
+}
+  
 /* ---- クラブ ---- */
 document.querySelectorAll(".club-buttons button").forEach(btn=>{
   btn.onclick=()=>{
